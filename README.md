@@ -1,1 +1,1 @@
-Ruang Dokter v1.2.2 - fixed package. See README in earlier package for details.
+Ruang Dokter v1.3 full package. Deploy to GitHub Pages by uploading all files to repository root.

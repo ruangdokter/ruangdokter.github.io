@@ -4,6 +4,9 @@
   --text:#0f172a;
   --muted:#6b7280;
   --accent:#0ea5e9;
+  --danger:#ef4444;
+  --warning:#f59e0b;
+  --success:#10b981;
   --radius:10px;
 }
 *{box-sizing:border-box}
@@ -15,14 +18,14 @@ body{margin:0;font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, A
 .header-actions{display:flex;gap:8px;align-items:center}
 .container{max-width:980px;margin:18px auto;padding:0 12px;display:flex;gap:16px}
 .left{flex:1;background:var(--card);padding:14px;border-radius:12px;box-shadow:0 8px 24px rgba(2,6,23,0.06)}
-.right{width:360px;background:var(--card);padding:14px;border-radius:12px;box-shadow:0 8px 24px rgba(2,6,23,0.06);height:calc(100vh - 140px);overflow:auto}
+.right{width:380px;background:var(--card);padding:14px;border-radius:12px;box-shadow:0 8px 24px rgba(2,6,23,0.06);height:calc(100vh - 140px);overflow:auto}
 label{display:block;margin-top:10px;font-weight:600;font-size:14px}
 input, textarea, select{width:100%;padding:8px;border-radius:8px;border:1px solid #d1d5db;margin-top:6px;font-size:14px}
 textarea{resize:vertical}
 .row{display:flex;gap:8px}
-.vitals-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px}
-.gcs{display:flex;gap:6px}
-.gcs input{width:48px;text-align:center}
+.vitals-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:6px}
+.gcs-row{display:flex;gap:6px}
+.gcs-row input{width:48px;text-align:center}
 .section-block{background:#fbfdff;padding:10px;border-radius:8px;border:1px solid #eef6fc;margin-top:8px}
 .btn{background:var(--accent);color:white;padding:10px 12px;border-radius:8px;border:none;cursor:pointer;margin-top:10px}
 .btn.secondary{background:#94a3b8}
@@ -36,9 +39,11 @@ textarea{resize:vertical}
 .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,0.45);padding:12px;z-index:1000}
 .modal .content{background:var(--card);padding:14px;border-radius:10px;width:100%;max-width:540px}
 .footer{padding:12px;text-align:center;color:var(--muted);font-size:13px}
+.warnings{color:var(--danger);font-weight:700;margin-bottom:8px}
+.ews{font-weight:700;margin-bottom:8px}
 .dark{--bg:#071022;--card:#0b1220;--text:#e6eef8;--muted:#9aa6b2}
 @media (max-width:900px){
   .container{flex-direction:column;padding:12px}
   .right{width:100%;height:auto}
-  .vitals-grid{grid-template-columns:repeat(2,1fr)}
+  .vitals-grid{grid-template-columns:repeat(1,1fr)}
 }

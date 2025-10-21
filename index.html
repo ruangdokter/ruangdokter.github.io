@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Ruang Dokter — Konsul IGD</title>
+<title>Ruang Dokter — Konsul</title>
 <link rel="icon" href="favicon.png">
 <link rel="stylesheet" href="style.css">
 </head>
@@ -23,15 +23,21 @@
       <label>Nama Dokter</label>
       <input id="namaDokter" placeholder="dr. Agung Satria">
 
+      <label>Lokasi</label>
+      <select id="lokasi">
+        <option value="IGD">IGD</option>
+        <option value="Poli">Poli</option>
+        <option value="Ruangan">Ruangan</option>
+      </select>
+
       <label>Nama RS</label>
-      <input id="namaRS" placeholder="IGD RSAM">
+      <input id="namaRS" placeholder="RSAM">
 
       <hr>
 
       <label>Nama Pasien</label>
       <input id="namaPasien" placeholder="">
-
-      <div class="row">
+      <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
         <div style="flex:1">
           <label>Usia (tahun)</label>
           <input id="usia" type="number" min="0" placeholder="">
@@ -54,14 +60,36 @@
       <label>Subjektif (S)</label>
       <textarea id="s" rows="2" placeholder=""></textarea>
 
+      <label>GCS (E V M)</label>
+      <div class="gcs-row">
+        <input id="gcsE" maxlength="1" placeholder="E">
+        <input id="gcsV" maxlength="1" placeholder="V">
+        <input id="gcsM" maxlength="1" placeholder="M">
+      </div>
+
       <label>Vitals / TTV</label>
       <div class="vitals-grid">
-        <div><label>TD</label><input id="td" placeholder="177/98"></div>
+        <div><label>TD (sistolik/diastolik)</label><input id="td" placeholder="177/98"></div>
         <div><label>HR</label><input id="hr" placeholder="102"></div>
         <div><label>RR</label><input id="rr" placeholder="25"></div>
         <div><label>T (°C)</label><input id="temp" placeholder="36.4"></div>
-        <div><label>SpO₂ (%)</label><input id="spo2" placeholder="93"></div>
-        <div><label>GCS E V M</label><div class="gcs"><input id="gcsE" maxlength="1" placeholder="2"><input id="gcsV" maxlength="1" placeholder="1"><input id="gcsM" maxlength="1" placeholder="4"></div></div>
+        <div style="grid-column: span 2;">
+          <label>SpO₂</label>
+          <div style="display:flex;gap:6px;align-items:center">
+            <input id="spo2" placeholder="99" style="width:80px">
+            <select id="o2type" style="width:160px">
+              <option value="RA">Room Air</option>
+              <option value="NC">O₂ NC</option>
+              <option value="FM">O₂ Face Mask</option>
+              <option value="NRM">O₂ NRM</option>
+              <option value="VM">O₂ Venturi Mask</option>
+              <option value="HFNC">O₂ HFNC</option>
+              <option value="VENT">O₂ Ventilator</option>
+            </select>
+            <input id="o2flow" placeholder="lpm/Fi%" style="width:90px">
+          </div>
+          <div class="muted">Pilih type lalu isi flow (lpm) atau FiO₂ (%) sesuai jenis.</div>
+        </div>
       </div>
 
       <label>Pemeriksaan Fisik (isi sesuai format kamu)</label>
@@ -82,18 +110,19 @@
         <input id="lain" placeholder="">
       </div>
 
-      <label>Objektif (O) — auto dari TTV & Fisik (bisa diedit)</label>
+      <label>Objektif (O) — auto dari GCS, TTV & Fisik (bisa diedit)</label>
       <textarea id="o" rows="4"></textarea>
 
-      <label>Terapi IGD (P)</label>
+      <label>P (Terapi / Plan)</label>
       <textarea id="p" rows="4" placeholder="- IVFD NaCl 0.9% 20 tpm
 - NGT DC
 - Inj. Ranitidin 50 mg/12 jam
-- O2 NC 3 LPM"></textarea>
+- O2 NC 3 lpm"></textarea>
 
       <div class="row" style="margin-top:8px">
         <button id="buatBtn" class="btn" style="flex:1">Buat & Tampilkan</button>
         <button id="copyBtn" class="btn secondary" style="width:110px" disabled>Copy</button>
+        <button id="resetBtn" class="btn outline" style="width:110px">Reset</button>
       </div>
 
       <div class="row" style="margin-top:8px">
@@ -115,12 +144,14 @@
 
     <aside class="right">
       <h4>Hasil Konsul</h4>
+      <div id="warnings" class="warnings"></div>
+      <div id="ewsBadge" class="ews"></div>
       <div id="hasil" class="output" role="status" aria-live="polite"></div>
 
       <h4 style="margin-top:12px">History</h4>
       <div id="history" class="history"></div>
 
-      <div style="margin-top:10px" class="muted">Catatan: AI Quick Copy membuka ChatGPT; tidak ada data pasien dikirim otomatis.</div>
+      <div style="margin-top:10px" class="muted">Catatan: AI Quick Copy membuka ChatGPT web; data pasien tidak dikirim tanpa persetujuan.</div>
     </aside>
   </main>
 
@@ -130,6 +161,8 @@
       <h4>Pengaturan</h4>
       <label>Nama Dokter</label><input id="setNama" placeholder="dr. Agung Satria">
       <label>Nama RS</label><input id="setRS" placeholder="RSAM">
+      <label>Auto-prefix nama pasien</label>
+      <select id="setPrefix"><option value="on" selected>On</option><option value="off">Off</option></select>
       <label>Jumlah shift</label><select id="setShift"><option>2</option><option selected>3</option><option>4</option></select>
       <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
         <button id="saveSet" class="btn">Simpan</button>

@@ -1,7 +1,7 @@
-// Ruang Dokter v1.2.2 - fixed buildObjective, defaults and explicit Add Template UI
+// Ruang Dokter v1.3 - full implementation
 document.addEventListener('DOMContentLoaded', ()=>{
-  // elements
   const namaDokter = document.getElementById('namaDokter');
+  const lokasi = document.getElementById('lokasi');
   const namaRS = document.getElementById('namaRS');
   const namaPasien = document.getElementById('namaPasien');
   const usia = document.getElementById('usia');
@@ -10,14 +10,16 @@ document.addEventListener('DOMContentLoaded', ()=>{
   const jk = document.getElementById('jk');
   const dx = document.getElementById('dx');
   const s = document.getElementById('s');
+  const gcsE = document.getElementById('gcsE');
+  const gcsV = document.getElementById('gcsV');
+  const gcsM = document.getElementById('gcsM');
   const td = document.getElementById('td');
   const hr = document.getElementById('hr');
   const rr = document.getElementById('rr');
   const temp = document.getElementById('temp');
   const spo2 = document.getElementById('spo2');
-  const gcsE = document.getElementById('gcsE');
-  const gcsV = document.getElementById('gcsV');
-  const gcsM = document.getElementById('gcsM');
+  const o2type = document.getElementById('o2type');
+  const o2flow = document.getElementById('o2flow');
   const kepala = document.getElementById('kepala');
   const thorax = document.getElementById('thorax');
   const abdomen = document.getElementById('abdomen');
@@ -30,6 +32,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   const copyBtn = document.getElementById('copyBtn');
   const aiQuickBtn = document.getElementById('aiQuickBtn');
   const saveBtn = document.getElementById('saveBtn');
+  const resetBtn = document.getElementById('resetBtn');
   const historyEl = document.getElementById('history');
   const templateSelect = document.getElementById('templateSelect');
   const applyTemplate = document.getElementById('applyTemplate');
@@ -37,23 +40,23 @@ document.addEventListener('DOMContentLoaded', ()=>{
   const manageTemplate = document.getElementById('manageTemplate');
   const manageTemplates = document.getElementById('manageTemplates');
   const templateList = document.getElementById('templateList');
-
+  const warningsEl = document.getElementById('warnings');
+  const ewsBadge = document.getElementById('ewsBadge');
   const settingsBtn = document.getElementById('settingsBtn');
   const settingsModal = document.getElementById('settings');
   const closeSet = document.getElementById('closeSet');
   const saveSet = document.getElementById('saveSet');
   const setNama = document.getElementById('setNama');
   const setRS = document.getElementById('setRS');
+  const setPrefix = document.getElementById('setPrefix');
   const setShift = document.getElementById('setShift');
-
-  const themeToggle = document.getElementById('themeToggle');
   const logoImg = document.getElementById('logoImg');
+  const themeToggle = document.getElementById('themeToggle');
 
-  // storage keys
-  const STORAGE_KEY = 'rd_v1_2_2';
-  const HISTORY_KEY = 'rd_hist_v1_2_2';
-  const TEMPLATES_KEY = 'rd_tpl_v1_2_2';
-  const SETTINGS_KEY = 'rd_settings_v1_2_2';
+  const STORAGE_KEY = 'rd_v1_3_full';
+  const HISTORY_KEY = 'rd_hist_v1_3_full';
+  const TEMPLATES_KEY = 'rd_tpl_v1_3_full';
+  const SETTINGS_KEY = 'rd_settings_v1_3_full';
 
   function saveSettingsObj(o){ localStorage.setItem(SETTINGS_KEY, JSON.stringify(o)); }
   function loadSettingsObj(){ return JSON.parse(localStorage.getItem(SETTINGS_KEY)||'{}'); }
@@ -62,6 +65,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     const s = loadSettingsObj();
     if(s.nama) namaDokter.value = s.nama;
     if(s.rs) namaRS.value = s.rs;
+    if(s.prefix==='off') setPrefix.value = 'off'; else setPrefix.value='on';
     if(s.theme==='dark') document.documentElement.classList.add('dark');
     if(s.theme==='dark') logoImg.src = 'logo_dark.png'; else logoImg.src = 'logo_light.png';
     setNama.value = s.nama || '';
@@ -70,13 +74,12 @@ document.addEventListener('DOMContentLoaded', ()=>{
   }
   loadSettings();
 
-  // autosave
   function autosave(){
     const data = {
-      namaDokter: namaDokter.value, namaRS: namaRS.value, namaPasien: namaPasien.value,
-      usia: usia.value, jk: jk.value, bb: bb.value, dx: dx.value, s: s.value,
-      td: td.value, hr: hr.value, rr: rr.value, temp: temp.value, spo2: spo2.value,
+      namaDokter: namaDokter.value, lokasi: lokasi.value, namaRS: namaRS.value,
+      namaPasien: namaPasien.value, usia: usia.value, jk: jk.value, bb: bb.value, dx: dx.value, s: s.value,
       gcsE: gcsE.value, gcsV: gcsV.value, gcsM: gcsM.value,
+      td: td.value, hr: hr.value, rr: rr.value, temp: temp.value, spo2: spo2.value, o2type: o2type.value, o2flow: o2flow.value,
       kepala: kepala.value, thorax: thorax.value, abdomen: abdomen.value, ekstremitas: ekstremitas.value, lain: lain.value,
       o: oField.value, p: p.value
     };
@@ -92,12 +95,11 @@ document.addEventListener('DOMContentLoaded', ()=>{
   }
   loadDraft();
 
-  // set default physical exam templates if empty
   if(!(kepala.value && kepala.value.trim())){
-    kepala.value = 'CA +/+, SI -/-';
+    kepala.value = 'CA -/-, SI -/-';
   }
   if(!(thorax.value && thorax.value.trim())){
-    thorax.value = 'ves +/+, rh -/-, wh -/-, BJ reg, m -, g -';
+    thorax.value = 'ves +/+, rh -/-, wh -/-. BJ reg, m -, g -';
   }
   if(!(abdomen.value && abdomen.value.trim())){
     abdomen.value = 'supel, BU +';
@@ -108,14 +110,22 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
   setInterval(autosave, 5000);
 
-  // show bb if child
   usia.addEventListener('input', ()=>{
     const val = parseFloat(usia.value);
     if(!isNaN(val) && val < 18 && val >= 0) bbRow.style.display = 'block';
     else bbRow.style.display = 'none';
   });
 
-  // smart labeling helper to avoid duplicate labels
+  function parseSystolic(tdStr){
+    if(!tdStr) return null;
+    const m = tdStr.toString().match(/(\d+)\s*\/?\s*(\d+)?/);
+    if(m){
+      return parseInt(m[1],10);
+    }
+    const n = parseInt(tdStr,10);
+    return isNaN(n)? null : n;
+  }
+
   function smartLabel(label, fieldValue){
     const v = (fieldValue||'').trim();
     if(!v) return null;
@@ -124,22 +134,42 @@ document.addEventListener('DOMContentLoaded', ()=>{
     return label + ': ' + v;
   }
 
-  // build objective using smart labels and include physical sections
   function buildObjective(){
     const parts = [];
-    if(td.value) parts.push('TD: '+td.value);
+    const ge = (gcsE.value||'').trim(), gv = (gcsV.value||'').trim(), gm = (gcsM.value||'').trim();
+    if(ge||gv||gm) parts.push('GCS: E'+(ge||'-')+'V'+(gv||'-')+'M'+(gm||'-'));
+
+    if(td.value) parts.push('TD: '+td.value+' mmHg');
     if(hr.value) parts.push('HR: '+hr.value+' x/m');
     if(rr.value) parts.push('RR: '+rr.value+' x/m');
     if(temp.value) parts.push('T: '+temp.value+' °C');
-    if(spo2.value) parts.push('SpO₂: '+spo2.value+'% RA');
-    const ge = (gcsE.value||'').trim(), gv = (gcsV.value||'').trim(), gm = (gcsM.value||'').trim();
-    if(ge||gv||gm) parts.push('GCS: E'+(ge||'-')+'V'+(gv||'-')+'M'+(gm||'-'));
+
+    const sp = (spo2.value||'').toString().trim();
+    if(sp){
+      const type = o2type.value;
+      const flow = (o2flow.value||'').toString().trim();
+      if(type==='RA'){
+        parts.push('SpO₂: '+sp+'% room air');
+      } else if(type==='VENT'){
+        let extras = [];
+        if(flow) extras.push('FiO₂ '+flow+'%');
+        const ex = extras.length? ' ('+extras.join(', ')+')': '';
+        parts.push('SpO₂: '+sp+'% on ventilator'+ex);
+      } else if(type==='VM' || type==='HFNC'){
+        if(flow) parts.push('SpO₂: '+sp+'% O₂ '+(type==='VM'?'Venturi':'HFNC')+' '+flow+ (isNaN(parseFloat(flow))? '' : (type==='VM'?'%':' lpm')) );
+        else parts.push('SpO₂: '+sp+'% O₂ '+(type==='VM'?'Venturi':'HFNC'));
+      } else {
+        if(flow) parts.push('SpO₂: '+sp+'% O₂ '+type+' '+flow+' lpm');
+        else parts.push('SpO₂: '+sp+'% O₂ '+type);
+      }
+    }
+
+    if(parts.length) parts.push('');
 
     const k = smartLabel('Kepala', kepala.value);
     const t = smartLabel('Thorax', thorax.value);
     const a = smartLabel('Abdomen', abdomen.value);
     const e = smartLabel('Ekstremitas', ekstremitas.value);
-
     if(k) parts.push(k);
     if(t) parts.push(t);
     if(a) parts.push(a);
@@ -149,10 +179,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
     oField.value = parts.join('\n');
   }
 
-  [td,hr,rr,temp,spo2,gcsE,gcsV,gcsM,kepala,thorax,abdomen,ekstremitas,lain].forEach(el=> el.addEventListener('input', buildObjective));
+  [gcsE,gcsV,gcsM,td,hr,rr,temp,spo2,o2type,o2flow,kepala,thorax,abdomen,ekstremitas,lain].forEach(el=> el.addEventListener('input', buildObjective));
   buildObjective();
 
-  // greeting
   function greeting(){
     const h = new Date().getHours();
     if(h>=5 && h<11) return 'Selamat pagi';
@@ -161,28 +190,137 @@ document.addEventListener('DOMContentLoaded', ()=>{
     return 'Selamat malam';
   }
 
-  // generate output
+  function patientPrefix(name){
+    const s = loadSettingsObj();
+    if(s.prefix==='off') return name;
+    const age = parseFloat(usia.value);
+    if(!isNaN(age) && age < 18) {
+      if(/^\s*An\./i.test(name)) return name;
+      return (name? 'An. '+name : 'An. [Nama]');
+    }
+    const sex = jk.value;
+    if(sex==='F'){
+      if(/^\s*Ny\./i.test(name)) return name;
+      return (name? 'Ny. '+name : 'Ny. [Nama]');
+    } else {
+      if(/^\s*Tn\./i.test(name)) return name;
+      return (name? 'Tn. '+name : 'Tn. [Nama]');
+    }
+  }
+
+  function calcEWS(){
+    let score = 0;
+    const rrVal = parseFloat(rr.value) || null;
+    const spVal = parseFloat(spo2.value) || null;
+    const hrVal = parseFloat(hr.value) || null;
+    const tVal = parseFloat(temp.value) || null;
+    const tdSys = parseSystolic(td.value);
+    const typeO2 = o2type.value;
+
+    if(rrVal!==null){
+      if(rrVal>=25) score += 3;
+      else if(rrVal>=21) score += 2;
+      else if(rrVal>=12) score += 0;
+      else if(rrVal>=9) score += 1;
+      else score += 3;
+    }
+
+    if(spVal!==null){
+      if(spVal<=91) score += 3;
+      else if(spVal<=93) score += 2;
+      else if(spVal<=95) score += 1;
+      else score += 0;
+    }
+
+    if(typeO2 && typeO2!=='RA'){
+      score += 2;
+    }
+
+    if(tVal!==null){
+      if(tVal<=35.0) score += 3;
+      else if(tVal<=36.0) score += 1;
+      else if(tVal<=38.0) score += 0;
+      else if(tVal<=39.0) score += 1;
+      else score += 2;
+    }
+
+    if(tdSys!==null){
+      if(tdSys<=90) score += 3;
+      else if(tdSys<=100) score += 2;
+      else if(tdSys<=110) score += 1;
+      else if(tdSys<=219) score += 0;
+      else score += 3;
+    }
+
+    if(hrVal!==null){
+      if(hrVal<=40) score += 3;
+      else if(hrVal<=50) score += 1;
+      else if(hrVal<=90) score += 0;
+      else if(hrVal<=110) score += 1;
+      else if(hrVal<=130) score += 2;
+      else score += 3;
+    }
+
+    const ge = parseInt(gcsE.value)||0, gv = parseInt(gcsV.value)||0, gm = parseInt(gcsM.value)||0;
+    const gcsTotal = (ge||0)+(gv||0)+(gm||0);
+    if(gcsTotal && gcsTotal < 15) score += 3;
+
+    return score;
+  }
+
+  function ewsLabel(score){
+    if(score>=7) return {txt:'EWS: '+score+' (High)', color:'var(--danger)', note:'EWS ≥7 — pertimbangkan eskalasi/ICU.'};
+    if(score>=5) return {txt:'EWS: '+score+' (Moderate)', color:'var(--warning)', note:'EWS 5–6 — pemantauan ketat dan penilaian cepat.'};
+    return {txt:'EWS: '+score+' (Low)', color:'var(--success)', note:'EWS 0–4 — observasi rutin.'};
+  }
+
+  function validateAll(){
+    warningsEl.innerHTML = '';
+    const warns = [];
+    const spVal = parseFloat(spo2.value);
+    const tdSys = parseSystolic(td.value);
+    const hrVal = parseFloat(hr.value);
+    const rrVal = parseFloat(rr.value);
+    const ge = parseInt(gcsE.value)||0, gv = parseInt(gcsV.value)||0, gm = parseInt(gcsM.value)||0;
+    const gcsTotal = (ge||0)+(gv||0)+(gm||0);
+    if(!isNaN(spVal) && spVal < 90) warns.push('SpO₂ < 90% — segera tinjau kebutuhan oksigen/ventilasi.');
+    if(tdSys!==null && (tdSys < 90 || tdSys > 220)) warns.push('TD sistolik abnormal (<90 atau >220).');
+    if(!isNaN(hrVal) && (hrVal < 40 || hrVal > 130)) warns.push('HR ekstrem (<40 atau >130).');
+    if(!isNaN(rrVal) && (rrVal < 8 || rrVal > 25)) warns.push('RR abnormal (<8 atau >25).');
+    if(gcsTotal && gcsTotal <= 8) warns.push('GCS ≤ 8 — pertimbangkan proteksi jalan napas.');
+    if(warns.length){
+      warningsEl.innerHTML = warns.map(w=>'<div>'+w+'</div>').join('');
+    } else warningsEl.innerHTML = '';
+  }
+
   function generateOutput(){
     const dok = namaDokter.value.trim() || 'dr. [nama]';
     const rs = namaRS.value.trim() || '[Nama RS]';
-    const np = namaPasien.value.trim() || '';
-    const age = usia.value? (usia.value+' tahun') : '';
-    const weight = (usia.value && parseFloat(usia.value)<18 && bb.value)? (' BB '+bb.value+' kg') : '';
+    const loc = lokasi.value || 'IGD';
+    const prefName = patientPrefix(namaPasien.value.trim());
+    const ageText = usia.value? (usia.value+' tahun') : '';
     const dxv = dx.value.trim() || '-';
     const sText = s.value.trim() || '-';
     const oText = oField.value.trim() || '-';
     const pText = p.value.trim() || '-';
-    let header = `${greeting()} dokter. Izin dok dengan ${dok}, dokter jaga IGD ${rs}.\nIzin konsul pasien IGD ${rs}.\n\n`;
-    let id = `${np}\n${age}${weight}\n\n`;
-    let body = `Dx: ${dxv}\n\nS: ${sText}\n\nO:\n${oText}\n\nTerapi IGD:\n${pText}\n\nMohon advice selanjutnya. Terima kasih dokter.`;
+
+    let header = `${greeting()} dokter. Izin dok dengan ${dok}, dokter jaga ${loc} ${rs}.\nIzin konsul pasien ${loc} ${rs}.\n\n`;
+    let id = `${prefName}\n${ageText}\n\n`;
+    let body = `Dx: ${dxv}\n\nS: ${sText}\n\nO:\n${oText}\n\nP:\n${pText}\n\nMohon advice selanjutnya. Terima kasih dokter.`;
     return header + id + body;
   }
 
-  // actions
   buatBtn.addEventListener('click', ()=>{
+    buildObjective();
+    validateAll();
     const txt = generateOutput();
     hasil.textContent = txt;
     copyBtn.disabled = false;
+
+    const score = calcEWS();
+    const lbl = ewsLabel(score);
+    ewsBadge.textContent = lbl.txt + ' — ' + lbl.note;
+    ewsBadge.style.color = lbl.color;
   });
 
   copyBtn.addEventListener('click', async ()=>{
@@ -192,7 +330,23 @@ document.addEventListener('DOMContentLoaded', ()=>{
     alert('Konsul tersalin ke clipboard.');
   });
 
-  // history
+  function resetForm(){
+    namaPasien.value = ''; usia.value=''; jk.value='F'; bb.value=''; dx.value=''; s.value='';
+    gcsE.value=''; gcsV.value=''; gcsM.value='';
+    td.value=''; hr.value=''; rr.value=''; temp.value=''; spo2.value=''; o2type.value='RA'; o2flow.value='';
+    kepala.value = 'CA -/-, SI -/-';
+    thorax.value = 'ves +/+, rh -/-, wh -/-. BJ reg, m -, g -';
+    abdomen.value = 'supel, BU +';
+    ekstremitas.value = 'akral hangat, CRT <2s';
+    lain.value=''; oField.value=''; p.value='';
+    hasil.textContent=''; copyBtn.disabled=true; warningsEl.innerHTML=''; ewsBadge.textContent='';
+    localStorage.removeItem(STORAGE_KEY);
+  }
+
+  resetBtn.addEventListener('click', ()=>{
+    if(confirm('Reset form? Semua perubahan akan hilang.')) resetForm();
+  });
+
   function loadHistory(){
     const hist = JSON.parse(localStorage.getItem(HISTORY_KEY)||'[]');
     historyEl.innerHTML = '';
@@ -216,7 +370,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     const hist = JSON.parse(localStorage.getItem(HISTORY_KEY)||'[]');
     const item = {
       t: Date.now(),
-      nama: namaPasien.value.trim() || '[Nama]',
+      nama: patientPrefix(namaPasien.value.trim()||'[Nama]'),
       dx: dx.value.trim() || '[Dx]',
       s: s.value.trim(),
       o: oField.value.trim(),
@@ -227,7 +381,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
     hist.push(item);
     localStorage.setItem(HISTORY_KEY, JSON.stringify(hist));
     loadHistory();
-    alert('Tersimpan ke history lokal.');
+    alert('Tersimpan ke history lokal. Form akan direset.');
+    resetForm();
   });
 
   historyEl.addEventListener('click', (ev)=>{
@@ -238,7 +393,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
       const it = hist[load];
       if(!it) return;
       namaPasien.value = it.nama; dx.value = it.dx; s.value = it.s; oField.value = it.o; p.value = it.p;
-      namaDokter.value = it.dok || namaDokter.value; namaRS.value = it.rs || namaRS.value;
       hasil.textContent = generateOutput();
       copyBtn.disabled = false;
     } else if(del){
@@ -249,7 +403,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
     }
   });
 
-  // templates (load/seed/populate)
   function loadTemplates(){
     const t = JSON.parse(localStorage.getItem(TEMPLATES_KEY)||'[]');
     if(t.length===0){
@@ -289,7 +442,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
     alert('Template diterapkan. Silakan sesuaikan.');
   });
 
-  // add template explicit button
   addTemplate.addEventListener('click', ()=>{
     const name = prompt('Nama template baru (cth: Sepsis cepat):');
     if(!name) return;
@@ -332,8 +484,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
   document.getElementById('closeTpl').addEventListener('click', ()=> manageTemplates.style.display='none');
 
-  // AI Quick Copy workflow
   aiQuickBtn.addEventListener('click', ()=>{
+    buildObjective();
     const age = usia.value? (usia.value+' tahun') : '';
     const promptParts = [];
     promptParts.push(`Age: ${age}`);
@@ -350,11 +502,10 @@ document.addEventListener('DOMContentLoaded', ()=>{
     }).catch(()=> alert('Gagal menyalin ke clipboard. Mohon izinkan clipboard access.'));
   });
 
-  // settings modal handlers
   settingsBtn.addEventListener('click', ()=> settingsModal.style.display='flex');
   closeSet.addEventListener('click', ()=> settingsModal.style.display='none');
   saveSet.addEventListener('click', ()=>{
-    const s = { nama:setNama.value.trim(), rs:setRS.value.trim(), shifts:setShift.value, theme: document.documentElement.classList.contains('dark')? 'dark':'light' };
+    const s = { nama:setNama.value.trim(), rs:setRS.value.trim(), prefix:setPrefix.value, shifts:setShift.value, theme: document.documentElement.classList.contains('dark')? 'dark':'light' };
     saveSettingsObj(s);
     if(s.nama) namaDokter.value = s.nama;
     if(s.rs) namaRS.value = s.rs;
@@ -363,7 +514,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
     loadSettings();
   });
 
-  // theme toggle
   themeToggle.addEventListener('click', ()=>{
     document.documentElement.classList.toggle('dark');
     const isDark = document.documentElement.classList.contains('dark');
@@ -372,5 +522,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
     saveSettingsObj(s);
     logoImg.src = isDark? 'logo_dark.png' : 'logo_light.png';
   });
+
+  populateTemplateSelect();
+  loadHistory();
 
 });

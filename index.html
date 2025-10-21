@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ruang Dokter</title>
+    <link rel="icon" type="image/png" href="favicon.png">
+    <style>
+        body {
+            font-family: 'Helvetica', sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
+            margin: 0;
+            padding: 0;
+        }
+        header {
+            display: flex;
+            align-items: center;
+            background-color: #0ea5e9;
+            color: white;
+            padding: 10px 20px;
+        }
+        header h1 {
+            font-size: 1.2em;
+            margin: 0;
+            font-weight: 600;
+        }
+        .container {
+            max-width: 600px;
+            margin: 40px auto;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }
+        textarea, input, select {
+            width: 100%;
+            margin-top: 8px;
+            padding: 8px;
+            border: 1px solid #cbd5e1;
+            border-radius: 5px;
+        }
+        button {
+            background-color: #0ea5e9;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #0284c7;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Ruang Dokter</h1>
+    </header>
+    <div class="container">
+        <h2>Format Konsul IGD</h2>
+        <label>Subjektif (S):</label>
+        <textarea id="s"></textarea>
+        <label>Objektif (O):</label>
+        <textarea id="o"></textarea>
+        <label>Diagnosis:</label>
+        <textarea id="dx"></textarea>
+        <label>Terapi IGD:</label>
+        <textarea id="tx"></textarea>
+        <button onclick="generate()">Copy Format Konsul</button>
+        <textarea id="result" readonly rows="8" style="margin-top:10px"></textarea>
+    </div>
+
+    <script>
+        function greeting() {
+            const hour = new Date().getHours();
+            if (hour < 10) return "Selamat pagi";
+            if (hour < 15) return "Selamat siang";
+            if (hour < 18) return "Selamat sore";
+            return "Selamat malam";
+        }
+
+        function generate() {
+            const s = document.getElementById('s').value;
+            const o = document.getElementById('o').value;
+            const dx = document.getElementById('dx').value;
+            const tx = document.getElementById('tx').value;
+            const text = `${greeting()} dokter. Izin dengan Agung Satria, dokter jaga IGD RSAM. Izin konsul pasien IGD RSAM.
+
+` +
+                         `S:
+${s}
+
+O:
+${o}
+
+Dx:
+${dx}
+
+Terapi IGD:
+${tx}
+
+Mohon advice selanjutnya, terima kasih dokter.`;
+            document.getElementById('result').value = text;
+            navigator.clipboard.writeText(text);
+            alert("Format konsul telah disalin!");
+        }
+    </script>
+</body>
+</html>

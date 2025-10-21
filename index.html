@@ -1,111 +1,118 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ruang Dokter</title>
-    <link rel="icon" type="image/png" href="favicon.png">
-    <style>
-        body {
-            font-family: 'Helvetica', sans-serif;
-            background-color: #f8fafc;
-            color: #1e293b;
-            margin: 0;
-            padding: 0;
-        }
-        header {
-            display: flex;
-            align-items: center;
-            background-color: #0ea5e9;
-            color: white;
-            padding: 10px 20px;
-        }
-        header h1 {
-            font-size: 1.2em;
-            margin: 0;
-            font-weight: 600;
-        }
-        .container {
-            max-width: 600px;
-            margin: 40px auto;
-            padding: 20px;
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-        }
-        textarea, input, select {
-            width: 100%;
-            margin-top: 8px;
-            padding: 8px;
-            border: 1px solid #cbd5e1;
-            border-radius: 5px;
-        }
-        button {
-            background-color: #0ea5e9;
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 6px;
-            cursor: pointer;
-            margin-top: 10px;
-        }
-        button:hover {
-            background-color: #0284c7;
-        }
-    </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Ruang Dokter — Konsul & Oper</title>
+<link rel="icon" href="favicon.png" />
+<link rel="stylesheet" href="style.css" />
 </head>
 <body>
-    <header>
-        <h1>Ruang Dokter</h1>
-    </header>
-    <div class="container">
-        <h2>Format Konsul IGD</h2>
-        <label>Subjektif (S):</label>
-        <textarea id="s"></textarea>
-        <label>Objektif (O):</label>
-        <textarea id="o"></textarea>
-        <label>Diagnosis:</label>
-        <textarea id="dx"></textarea>
-        <label>Terapi IGD:</label>
-        <textarea id="tx"></textarea>
-        <button onclick="generate()">Copy Format Konsul</button>
-        <textarea id="result" readonly rows="8" style="margin-top:10px"></textarea>
+<header class="site-header">
+  <div class="brand">Ruang Dokter</div>
+  <div class="header-actions">
+    <button id="settingsBtn" class="btn small">Pengaturan</button>
+    <button id="themeToggle" class="btn small">🌙</button>
+  </div>
+</header>
+
+<main class="container">
+  <section class="left">
+    <h2>Input Konsul</h2>
+
+    <label>Nama Dokter</label>
+    <input id="namaDokter" placeholder="Masukkan nama dokter (atau set di Pengaturan)">
+
+    <label>Rumah Sakit</label>
+    <input id="namaRS" placeholder="Masukkan nama Rumah Sakit (atau set di Pengaturan)">
+
+    <label>Subjektif (S)</label>
+    <textarea id="subjektif" rows="3" placeholder="Keluhan utama / anamnesis singkat"></textarea>
+
+    <div class="vitals-grid">
+      <div>
+        <label>TD (mmHg)</label>
+        <input id="td" placeholder="mis: 120/80">
+      </div>
+      <div>
+        <label>HR (x/m)</label>
+        <input id="hr" placeholder="mis: 88">
+      </div>
+      <div>
+        <label>RR (x/m)</label>
+        <input id="rr" placeholder="mis: 20">
+      </div>
+      <div>
+        <label>T (°C)</label>
+        <input id="temp" placeholder="36.7">
+      </div>
+      <div>
+        <label>SpO₂ (%)</label>
+        <input id="spo2" placeholder="98">
+      </div>
+      <div class="gcs">
+        <label>GCS (E V M)</label>
+        <div class="gcs-row">
+          <input id="gcsE" placeholder="E" maxlength="1">
+          <input id="gcsV" placeholder="V" maxlength="1">
+          <input id="gcsM" placeholder="M" maxlength="1">
+        </div>
+      </div>
     </div>
 
-    <script>
-        function greeting() {
-            const hour = new Date().getHours();
-            if (hour < 10) return "Selamat pagi";
-            if (hour < 15) return "Selamat siang";
-            if (hour < 18) return "Selamat sore";
-            return "Selamat malam";
-        }
+    <label>Objektif (O) — auto dari tanda vital (bisa diedit)</label>
+    <textarea id="objektif" rows="3" placeholder="O: ..."></textarea>
 
-        function generate() {
-            const s = document.getElementById('s').value;
-            const o = document.getElementById('o').value;
-            const dx = document.getElementById('dx').value;
-            const tx = document.getElementById('tx').value;
-            const text = `${greeting()} dokter. Izin dengan Agung Satria, dokter jaga IGD RSAM. Izin konsul pasien IGD RSAM.
+    <label>Diagnosis (A)</label>
+    <textarea id="diagnosis" rows="2"></textarea>
 
-` +
-                         `S:
-${s}
+    <label>Terapi / Rencana (P)</label>
+    <textarea id="terapi" rows="3" placeholder="- IVFD ..."></textarea>
 
-O:
-${o}
+    <div class="btn-row">
+      <button id="generateBtn" class="btn">Buat & Tampilkan</button>
+      <button id="copyBtn" class="btn secondary" disabled>Copy</button>
+    </div>
 
-Dx:
-${dx}
+    <div class="btn-row">
+      <button id="aiBtn" class="btn outline">Analisis AI</button>
+      <button id="saveHistory" class="btn">Simpan ke History</button>
+    </div>
 
-Terapi IGD:
-${tx}
+    <div id="aiResult" class="ai-box" hidden></div>
+  </section>
 
-Mohon advice selanjutnya, terima kasih dokter.`;
-            document.getElementById('result').value = text;
-            navigator.clipboard.writeText(text);
-            alert("Format konsul telah disalin!");
-        }
-    </script>
+  <aside class="right">
+    <h2>Hasil Konsul</h2>
+    <pre id="hasilKonsul" class="output" aria-live="polite"></pre>
+
+    <h3>History</h3>
+    <div id="historyList" class="history"></div>
+  </aside>
+</main>
+
+<!-- Settings Modal -->
+<div id="settingsModal" class="modal" aria-hidden="true">
+  <div class="modal-content">
+    <h3>Pengaturan</h3>
+    <label>Nama Dokter</label>
+    <input id="modalNama" placeholder="dr. Agung Satria">
+    <label>Nama Rumah Sakit</label>
+    <input id="modalRS" placeholder="RSAM">
+    <label>Jumlah shift (optional)</label>
+    <select id="modalShifts">
+      <option value="2">2</option>
+      <option value="3" selected>3</option>
+      <option value="4">4</option>
+    </select>
+    <div class="modal-actions">
+      <button id="saveSettings" class="btn">Simpan</button>
+      <button id="closeSettings" class="btn secondary">Tutup</button>
+    </div>
+    <p class="muted">Pengaturan disimpan di perangkat Anda (local browser).</p>
+  </div>
+</div>
+
+<script src="script.js"></script>
 </body>
 </html>

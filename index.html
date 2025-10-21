@@ -1,118 +1,401 @@
 <!doctype html>
 <html lang="id">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Ruang Dokter — Konsul & Oper</title>
-<link rel="icon" href="favicon.png" />
-<link rel="stylesheet" href="style.css" />
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ruang Dokter — Konsul IGD</title>
+<link rel="icon" href="favicon.png">
+<style>
+:root{
+  --bg:#f8fafc; --card:#fff; --text:#0f172a; --muted:#6b7280; --accent:#0ea5e9; --radius:10px;
+  --maxw:980px;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;}
+.header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--accent);color:white}
+.brand{font-weight:700;font-size:1.05rem}
+.header-actions{display:flex;gap:8px;align-items:center}
+.container{max-width:var(--maxw);margin:18px auto;padding:0 12px;display:flex;gap:16px}
+.left{flex:1;background:var(--card);padding:14px;border-radius:12px;box-shadow:0 8px 24px rgba(2,6,23,0.06)}
+.right{width:360px;background:var(--card);padding:14px;border-radius:12px;box-shadow:0 8px 24px rgba(2,6,23,0.06);height:calc(100vh - 140px);overflow:auto}
+label{display:block;margin-top:10px;font-weight:600;font-size:14px}
+input, textarea, select{width:100%;padding:8px;border-radius:8px;border:1px solid #d1d5db;margin-top:6px;font-size:14px}
+textarea{resize:vertical}
+.vitals{display:grid;grid-template-columns:1fr;gap:8px;margin-top:6px}
+.vital-row{display:flex;gap:8px}
+.vital-row input{flex:1}
+.gcs{display:flex;gap:6px}
+.gcs input{width:48px;text-align:center}
+.section-block{background:#fbfdff;padding:10px;border-radius:8px;border:1px solid #eef6fc;margin-top:8px}
+.btn{background:var(--accent);color:white;padding:10px 12px;border-radius:8px;border:none;cursor:pointer;margin-top:10px}
+.btn.secondary{background:#94a3b8}
+.btn.outline{background:transparent;color:var(--accent);border:1px solid var(--accent)}
+.row{display:flex;gap:8px}
+.output{white-space:pre-wrap;background:#f1f5f9;padding:12px;border-radius:8px;border:1px solid #e2e8f0;min-height:220px}
+.history{margin-top:8px}
+.history-item{padding:8px;border-radius:8px;border:1px solid #e6eef6;margin-bottom:8px;background:linear-gradient(180deg,#fff,#fbfdff)}
+.small{font-size:13px;padding:6px 8px}
+.muted{color:var(--muted);font-size:13px}
+.modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,0.45);padding:12px}
+.modal .content{background:var(--card);padding:14px;border-radius:10px;width:100%;max-width:540px}
+.footer{padding:12px;text-align:center;color:var(--muted);font-size:13px}
+
+/* dark */
+.dark{--bg:#071022;--card:#0b1220;--text:#e6eef8;--muted:#9aa6b2}
+.dark .header{background:#0b4f6c}
+
+/* responsive */
+@media (min-width:1000px){
+  .vitals{grid-template-columns:repeat(3,1fr)}
+}
+@media (max-width:900px){
+  .container{flex-direction:column;padding:12px}
+  .right{width:100%;height:auto}
+  .vitals{grid-template-columns:repeat(2,1fr)}
+}
+</style>
 </head>
 <body>
-<header class="site-header">
-  <div class="brand">Ruang Dokter</div>
-  <div class="header-actions">
-    <button id="settingsBtn" class="btn small">Pengaturan</button>
-    <button id="themeToggle" class="btn small">🌙</button>
+  <div class="header">
+    <div class="brand">Ruang Dokter</div>
+    <div class="header-actions">
+      <button id="settingsBtn" class="btn small">Pengaturan</button>
+      <button id="themeToggle" class="btn small">🌙</button>
+    </div>
   </div>
-</header>
 
-<main class="container">
-  <section class="left">
-    <h2>Input Konsul</h2>
+  <main class="container">
+    <section class="left">
+      <h3>Input Konsul — cepat</h3>
 
-    <label>Nama Dokter</label>
-    <input id="namaDokter" placeholder="Masukkan nama dokter (atau set di Pengaturan)">
+      <label>Nama Dokter</label>
+      <input id="namaDokter" placeholder="dr. Agung Satria">
 
-    <label>Rumah Sakit</label>
-    <input id="namaRS" placeholder="Masukkan nama Rumah Sakit (atau set di Pengaturan)">
+      <label>Nama RS</label>
+      <input id="namaRS" placeholder="IGD RSAM">
 
-    <label>Subjektif (S)</label>
-    <textarea id="subjektif" rows="3" placeholder="Keluhan utama / anamnesis singkat"></textarea>
+      <hr style="margin-top:12px;border:none;border-top:1px solid #eef2f6">
 
-    <div class="vitals-grid">
-      <div>
-        <label>TD (mmHg)</label>
-        <input id="td" placeholder="mis: 120/80">
-      </div>
-      <div>
-        <label>HR (x/m)</label>
-        <input id="hr" placeholder="mis: 88">
-      </div>
-      <div>
-        <label>RR (x/m)</label>
-        <input id="rr" placeholder="mis: 20">
-      </div>
-      <div>
-        <label>T (°C)</label>
-        <input id="temp" placeholder="36.7">
-      </div>
-      <div>
-        <label>SpO₂ (%)</label>
-        <input id="spo2" placeholder="98">
-      </div>
-      <div class="gcs">
-        <label>GCS (E V M)</label>
-        <div class="gcs-row">
-          <input id="gcsE" placeholder="E" maxlength="1">
-          <input id="gcsV" placeholder="V" maxlength="1">
-          <input id="gcsM" placeholder="M" maxlength="1">
+      <label>Nama Pasien</label>
+      <input id="namaPasien" placeholder="Ny. Roaida">
+
+      <div class="row" style="margin-top:8px">
+        <div style="flex:1">
+          <label>Usia (tahun)</label>
+          <input id="usia" type="number" min="0" placeholder="60">
+        </div>
+        <div style="width:120px">
+          <label>JK</label>
+          <select id="jk"><option value="F">F</option><option value="M">M</option></select>
         </div>
       </div>
+
+      <div id="bbRow" style="display:none">
+        <label>Berat Badan (kg)</label>
+        <input id="bb" placeholder="mis: 18.5">
+        <div class="muted" style="margin-top:6px">Field BB muncul otomatis jika usia &lt; 18 tahun.</div>
+      </div>
+
+      <label>Diagnosis (Dx)</label>
+      <input id="dx" placeholder="penurunan kesadaran susp ensefalopati metabolik + susp sepsis + massa colon susp maligna">
+
+      <label>Subjektif (S)</label>
+      <textarea id="s" rows="2" placeholder="Anamnesis singkat..."></textarea>
+
+      <label>Vital Signs (isi untuk auto O)</label>
+      <div class="vitals">
+        <div class="vital-row"><input id="td" placeholder="TD (mis: 177/98)"></div>
+        <div class="vital-row"><input id="hr" placeholder="HR (x/m)"></div>
+        <div class="vital-row"><input id="rr" placeholder="RR (x/m)"></div>
+        <div class="vital-row"><input id="temp" placeholder="T (°C)"></div>
+        <div class="vital-row"><input id="spo2" placeholder="SpO₂ (%)"></div>
+        <div>
+          <label>GCS (E V M)</label>
+          <div class="gcs">
+            <input id="gcsE" maxlength="1" placeholder="E">
+            <input id="gcsV" maxlength="1" placeholder="V">
+            <input id="gcsM" maxlength="1" placeholder="M">
+          </div>
+        </div>
+      </div>
+
+      <label>Pemeriksaan fisik — isi sesuai contoh</label>
+      <div class="section-block">
+        <label>Kepala</label>
+        <input id="kepala" placeholder="CA +/+, SI -/- (contoh)">
+
+        <label>Thorax</label>
+        <input id="thorax" placeholder="ves +/+, rh -/-, wh -/-, BJ reg, m -, g -">
+
+        <label>Abdomen</label>
+        <input id="abdomen" placeholder="supel, BU +">
+
+        <label>Ekstremitas</label>
+        <input id="ekstremitas" placeholder="akral hangat, CRT <2s">
+
+        <label>Catatan fisik lain (opsional)</label>
+        <input id="lain" placeholder="...">
+      </div>
+
+      <label>Objektif (O) — hasil auto (bisa diedit)</label>
+      <textarea id="o" rows="3"></textarea>
+
+      <label>Terapi IGD (P)</label>
+      <textarea id="p" rows="3" placeholder="- IVFD NaCl 0.9% 20 tpm\n- NGT DC\n- Inj. Ranitidin 50 mg/12 jam\n- O2 NC 3 LPM"></textarea>
+
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button id="buatBtn" class="btn" style="flex:1">Buat & Tampilkan</button>
+        <button id="copyBtn" class="btn secondary" style="width:110px" disabled>Copy</button>
+      </div>
+
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button id="aiBtn" class="btn outline" style="flex:1">Analisis AI (contoh)</button>
+        <button id="saveBtn" class="btn" style="width:140px">Simpan ke History</button>
+      </div>
+
+    </section>
+
+    <aside class="right">
+      <h4>Hasil Konsul</h4>
+      <div id="hasil" class="output" role="status" aria-live="polite"></div>
+
+      <h4 style="margin-top:12px">History</h4>
+      <div id="history" class="history"></div>
+
+      <div style="margin-top:10px" class="muted">Catatan: AI masih contoh. Data tersimpan lokal di browser.</div>
+    </aside>
+  </main>
+
+  <!-- Settings modal -->
+  <div id="settings" class="modal" aria-hidden="true">
+    <div class="content">
+      <h4>Pengaturan</h4>
+      <label>Nama Dokter</label>
+      <input id="setNama" placeholder="dr. Agung Satria">
+      <label>Nama RS</label>
+      <input id="setRS" placeholder="RSAM">
+      <label>Jumlah shift</label>
+      <select id="setShift"><option>2</option><option selected>3</option><option>4</option></select>
+      <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
+        <button id="saveSet" class="btn">Simpan</button>
+        <button id="closeSet" class="btn secondary">Tutup</button>
+      </div>
+      <p class="muted" style="margin-top:8px">Pengaturan disimpan di perangkat ini (localStorage).</p>
     </div>
-
-    <label>Objektif (O) — auto dari tanda vital (bisa diedit)</label>
-    <textarea id="objektif" rows="3" placeholder="O: ..."></textarea>
-
-    <label>Diagnosis (A)</label>
-    <textarea id="diagnosis" rows="2"></textarea>
-
-    <label>Terapi / Rencana (P)</label>
-    <textarea id="terapi" rows="3" placeholder="- IVFD ..."></textarea>
-
-    <div class="btn-row">
-      <button id="generateBtn" class="btn">Buat & Tampilkan</button>
-      <button id="copyBtn" class="btn secondary" disabled>Copy</button>
-    </div>
-
-    <div class="btn-row">
-      <button id="aiBtn" class="btn outline">Analisis AI</button>
-      <button id="saveHistory" class="btn">Simpan ke History</button>
-    </div>
-
-    <div id="aiResult" class="ai-box" hidden></div>
-  </section>
-
-  <aside class="right">
-    <h2>Hasil Konsul</h2>
-    <pre id="hasilKonsul" class="output" aria-live="polite"></pre>
-
-    <h3>History</h3>
-    <div id="historyList" class="history"></div>
-  </aside>
-</main>
-
-<!-- Settings Modal -->
-<div id="settingsModal" class="modal" aria-hidden="true">
-  <div class="modal-content">
-    <h3>Pengaturan</h3>
-    <label>Nama Dokter</label>
-    <input id="modalNama" placeholder="dr. Agung Satria">
-    <label>Nama Rumah Sakit</label>
-    <input id="modalRS" placeholder="RSAM">
-    <label>Jumlah shift (optional)</label>
-    <select id="modalShifts">
-      <option value="2">2</option>
-      <option value="3" selected>3</option>
-      <option value="4">4</option>
-    </select>
-    <div class="modal-actions">
-      <button id="saveSettings" class="btn">Simpan</button>
-      <button id="closeSettings" class="btn secondary">Tutup</button>
-    </div>
-    <p class="muted">Pengaturan disimpan di perangkat Anda (local browser).</p>
   </div>
-</div>
 
-<script src="script.js"></script>
+  <div class="footer">© 2025 Ruang Dokter</div>
+
+<script>
+(function(){
+  // elements
+  const namaDokter = document.getElementById('namaDokter');
+  const namaRS = document.getElementById('namaRS');
+  const namaPasien = document.getElementById('namaPasien');
+  const usia = document.getElementById('usia');
+  const bbRow = document.getElementById('bbRow');
+  const bb = document.getElementById('bb');
+  const jk = document.getElementById('jk');
+  const dx = document.getElementById('dx');
+  const s = document.getElementById('s');
+  const td = document.getElementById('td');
+  const hr = document.getElementById('hr');
+  const rr = document.getElementById('rr');
+  const temp = document.getElementById('temp');
+  const spo2 = document.getElementById('spo2');
+  const gcsE = document.getElementById('gcsE');
+  const gcsV = document.getElementById('gcsV');
+  const gcsM = document.getElementById('gcsM');
+  const kepala = document.getElementById('kepala');
+  const thorax = document.getElementById('thorax');
+  const abdomen = document.getElementById('abdomen');
+  const ekstremitas = document.getElementById('ekstremitas');
+  const lain = document.getElementById('lain');
+  const oField = document.getElementById('o');
+  const p = document.getElementById('p');
+  const hasil = document.getElementById('hasil');
+  const buatBtn = document.getElementById('buatBtn');
+  const copyBtn = document.getElementById('copyBtn');
+  const aiBtn = document.getElementById('aiBtn');
+  const saveBtn = document.getElementById('saveBtn');
+  const historyEl = document.getElementById('history');
+  const themeToggle = document.getElementById('themeToggle');
+  const settingsBtn = document.getElementById('settingsBtn');
+  const settingsModal = document.getElementById('settings');
+  const closeSet = document.getElementById('closeSet');
+  const saveSet = document.getElementById('saveSet');
+  const setNama = document.getElementById('setNama');
+  const setRS = document.getElementById('setRS');
+  const setShift = document.getElementById('setShift');
+
+  // load settings
+  function loadSettings(){
+    const s = JSON.parse(localStorage.getItem('rd_settings')||'{}');
+    if(s.nama) namaDokter.value = s.nama;
+    if(s.rs) namaRS.value = s.rs;
+    if(s.nama) setNama.value = s.nama;
+    if(s.rs) setRS.value = s.rs;
+    if(s.shifts) setShift.value = s.shifts;
+    if(s.theme==='dark') document.documentElement.classList.add('dark');
+  }
+  loadSettings();
+
+  // show bb if usia <18
+  usia.addEventListener('input', ()=>{
+    const val = parseFloat(usia.value);
+    if(!isNaN(val) && val < 18 && val >= 0) bbRow.style.display = 'block';
+    else bbRow.style.display = 'none';
+  });
+
+  // build objective from vitals + fisik
+  function buildObjective(){
+    const parts = [];
+    if(td.value) parts.push('TD: '+td.value);
+    if(hr.value) parts.push('HR: '+hr.value+' x/m');
+    if(rr.value) parts.push('RR: '+rr.value+' x/m');
+    if(temp.value) parts.push('T: '+temp.value+' °C');
+    if(spo2.value) parts.push('SpO2: '+spo2.value+'% RA');
+    const ge = (gcsE.value||'').trim();
+    const gv = (gcsV.value||'').trim();
+    const gm = (gcsM.value||'').trim();
+    if(ge||gv||gm) parts.push('GCS: E'+(ge||'-')+'V'+(gv||'-')+'M'+(gm||'-'));
+    // pemeriksaan fisik
+    if(kepala.value) parts.push('Kepala: '+kepala.value);
+    if(thorax.value) parts.push('Thorax: '+thorax.value);
+    if(abdomen.value) parts.push('Abdomen: '+abdomen.value);
+    if(ekstremitas.value) parts.push('Ekstremitas: '+ekstremitas.value);
+    if(lain.value) parts.push('Lain-lain: '+lain.value);
+    oField.value = parts.join('\\n');
+  }
+  [td,hr,rr,temp,spo2,gcsE,gcsV,gcsM,kepala,thorax,abdomen,ekstremitas,lain].forEach(el=> el.addEventListener('input', buildObjective));
+
+  // greeting by time
+  function greeting(){
+    const h = new Date().getHours();
+    if(h>=5 && h<11) return 'Selamat pagi';
+    if(h>=11 && h<15) return 'Selamat siang';
+    if(h>=15 && h<18) return 'Selamat sore';
+    return 'Selamat malam';
+  }
+
+  // generate output string (matches your WA example)
+  function generate(){
+    const dok = namaDokter.value.trim() || 'dr. [nama]';
+    const rs = namaRS.value.trim() || '[Nama RS]';
+    const np = namaPasien.value.trim() || '[Nama Pasien]';
+    const age = usia.value? (usia.value+' tahun') : '';
+    const weight = (usia.value && parseFloat(usia.value)<18 && bb.value)? (' BB '+bb.value+' kg') : '';
+    const dxv = dx.value.trim() || '-';
+    const sText = s.value.trim() || '-';
+    const oText = oField.value.trim() || '-';
+    const pText = p.value.trim() || '-';
+
+    let header = ${greeting()} dokter. Izin dok dengan ${dok}, dokter jaga IGD ${rs}.\\nIzin konsul pasien IGD ${rs}.\\n\\n;
+    let id = ${np}\\n${age}${weight}\\n\\n;
+    let body = Dx: ${dxv}\\n\\nS: ${sText}\\n\\nO:\\n${oText}\\n\\nTerapi IGD:\\n${pText}\\n\\nMohon advice selanjutnya. Terima kasih dokter.;
+    return header + id + body;
+  }
+
+  buatBtn.addEventListener('click', ()=>{
+    const txt = generate();
+    hasil.textContent = txt;
+    copyBtn.disabled = false;
+  });
+
+  copyBtn.addEventListener('click', async ()=>{
+    const txt = hasil.textContent;
+    if(!txt) return alert('Belum ada konsul untuk disalin.');
+    await navigator.clipboard.writeText(txt);
+    alert('Konsul tersalin ke clipboard.');
+  });
+
+  // history functions
+  function loadHistory(){
+    const hist = JSON.parse(localStorage.getItem('rd_hist')||'[]');
+    historyEl.innerHTML = '';
+    hist.slice().reverse().forEach((h, idx)=>{
+      const i = hist.length-1-idx;
+      const div = document.createElement('div');
+      div.className = 'history-item';
+      div.innerHTML = `<div class="muted">${new Date(h.t).toLocaleString()}</div>
+        <div style="font-weight:700;margin-top:6px">${h.nama} — ${h.dx}</div>
+        <div style="margin-top:6px">${(h.s||'').slice(0,120)}</div>
+        <div style="margin-top:8px;display:flex;gap:8px">
+          <button class="btn small" data-load="${i}">Load</button>
+          <button class="btn small secondary" data-del="${i}">Hapus</button>
+        </div>`;
+      historyEl.appendChild(div);
+    });
+  }
+  loadHistory();
+
+  saveBtn.addEventListener('click', ()=>{
+    const hist = JSON.parse(localStorage.getItem('rd_hist')||'[]');
+    const item = {
+      t: Date.now(),
+      nama: namaPasien.value.trim() || '[Nama]',
+      dx: dx.value.trim() || '[Dx]',
+      s: s.value.trim(),
+      o: oField.value.trim(),
+      p: p.value.trim(),
+      dok: namaDokter.value.trim(),
+      rs: namaRS.value.trim()
+    };
+    hist.push(item);
+    localStorage.setItem('rd_hist', JSON.stringify(hist));
+    loadHistory();
+    alert('Tersimpan ke history lokal.');
+  });
+
+  historyEl.addEventListener('click', (ev)=>{
+    const load = ev.target.getAttribute('data-load');
+    const del = ev.target.getAttribute('data-del');
+    const hist = JSON.parse(localStorage.getItem('rd_hist')||'[]');
+    if(load){
+      const it = hist[load];
+      if(!it) return;
+      namaPasien.value = it.nama; dx.value = it.dx; s.value = it.s; oField.value = it.o; p.value = it.p;
+      namaDokter.value = it.dok || namaDokter.value; namaRS.value = it.rs || namaRS.value;
+      hasil.textContent = generate();
+      copyBtn.disabled = false;
+    } else if(del){
+      if(!confirm('Hapus entry ini?')) return;
+      hist.splice(del,1);
+      localStorage.setItem('rd_hist', JSON.stringify(hist));
+      loadHistory();
+    }
+  });
+
+  // AI dummy
+  aiBtn.addEventListener('click', ()=>{
+    const txt = hasil.textContent || generate();
+    // example placeholder
+    alert('Analisis AI (contoh):\\n- Diagnosis tampak konsisten dengan temuan.\\n- Pertimbangkan antibiotik empiris jika sepsis dicurigai.\\n- Monitor GCS; jika ≤8 pertimbangkan airway protection.');
+  });
+
+  // settings modal
+  settingsBtn.addEventListener('click', ()=> settingsModal.style.display = 'flex');
+  closeSet.addEventListener('click', ()=> settingsModal.style.display = 'none');
+  saveSet.addEventListener('click', ()=>{
+    const s = { nama: setNama.value.trim(), rs: setRS.value.trim(), shifts: setShift.value, theme: document.documentElement.classList.contains('dark')? 'dark':'light' };
+    localStorage.setItem('rd_settings', JSON.stringify(s));
+    if(s.nama) namaDokter.value = s.nama;
+    if(s.rs) namaRS.value = s.rs;
+    settingsModal.style.display = 'none';
+    alert('Pengaturan disimpan.');
+  });
+
+  // theme toggle
+  themeToggle.addEventListener('click', ()=>{
+    document.documentElement.classList.toggle('dark');
+    themeToggle.textContent = document.documentElement.classList.contains('dark')? '☀':'🌙';
+  });
+
+  // load once
+  buildObjective();
+  loadSettings();
+})();
+</script>
 </body>
 </html>

@@ -318,6 +318,8 @@ function buildOutput(){
   const pemeriksaan_lain = getVal('pemeriksaan_lain');
   if(pemeriksaan_lain) pemeriksaan += `${pemeriksaan_lain}\n`;
 
+  o += `\n`;
+
   const plan = getVal('p') || '-';
 
   const output = `${greeting}\nIzin dok dengan ${namaDok}, dokter jaga ${unit} ${rs}.\nIzin konsul pasien dokter.\n\n${ident}\n\nDx: ${dx}\n\nS: ${s}\n\nO:\n${o}${pemeriksaan}P:\n${plan}\n\nMohon advice selanjutnya.\nTerima kasih dokter.`;

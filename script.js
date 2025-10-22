@@ -320,7 +320,7 @@ function buildOutput(){
 
   const plan = getVal('p') || '-';
 
-  const output = `${greeting}\nIzin dok dengan ${namaDok}, dokter jaga ${unit} ${rs}.\nIzin konsul pasien dokter.\n\n${ident}\n\nDx: ${dx}\n\nS: ${s}\n\nO:\n${o}${pemeriksaan}\n\nP:\n${plan}\n\nMohon advice selanjutnya.\nTerima kasih dokter.`;
+  const output = `${greeting}\nIzin dok dengan ${namaDok}, dokter jaga ${unit} ${rs}.\nIzin konsul pasien dokter.\n\n${ident}\n\nDx: ${dx}\n\nS: ${s}\n\nO:\n${o}${pemeriksaan}\nP:\n${plan}\n\nMohon advice selanjutnya.\nTerima kasih dokter.`;
   return output;
 }
 

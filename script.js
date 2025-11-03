@@ -1,386 +1,312 @@
-// Ruang Dokter v1.4.4 - all-in-one script
-// by Agung Satria
-// Features: profile overlay, konsul (S/O/P), GCS/TTV/SpO2, MAP/qSOFA/EWS, templates, history, calculators,
-// autosave draft, copy (incl. copy without identity), export/import, feedback WA, theme toggle, footer,
-// diagnosis multiline, populate form from history, template management, reset/profile edit.
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ruang Dokter — Konsul</title>
+<link rel="icon" href="favicon.png">
+<title>Ruang Dokter — v1.4.1</title>
+<link rel="icon" href="assets/favicon.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="header">
+    <div class="brand"><img id="logoImg" src="logo_light.png" alt="Ruang Dokter" height="28"> <span class="brand-text">Ruang Dokter</span></div>
+    <div class="brand"><img id="logo" src="assets/logo_header.png" alt="Ruang Dokter" height="40"><span class="brand-text">Ruang Dokter</span></div>
+<div class="header-actions">
+      <button id="settingsBtn" class="btn small">Pengaturan</button>
+<button id="themeToggle" class="btn small" title="Toggle theme">🌙</button>
+</div>
+</header>
 
-// ---------- Helpers ----------
-function qs(id){ return document.getElementById(id); }
-function hasEl(id){ return !!qs(id); }
-function getVal(id){ const e=qs(id); return e? (e.value||'') : ''; }
-function setVal(id,v){ const e=qs(id); if(!e) return; if('value' in e) e.value = v; else e.textContent = v; }
-function saveLocal(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
-function loadLocal(k,d){ try{ const s = localStorage.getItem(k); return s? JSON.parse(s): d; }catch(e){ return d; } }
-function el(tag, attrs={}){ const d=document.createElement(tag); for(const k in attrs) d.setAttribute(k, attrs[k]); return d; }
+  <main class="container">
+    <section class="left">
+      <h3>Input Konsul — cepat</h3>
+  <nav class="nav">
+    <button class="tabbtn active" data-tab="konsul">Konsul</button>
+    <button class="tabbtn" data-tab="calculator">Kalkulator</button>
+    <button class="tabbtn" data-tab="history">History</button>
+    <button class="tabbtn" data-tab="templates">Template</button>
+  </nav>
 
-// ---------- Storage keys ----------
-const STORAGE = {
-  history: 'rd_history_v1',
-  templates: 'rd_templates_v1',
-  draft: 'rd_draft_v1',
-  settings: 'rd_settings_v1',
-  profile: 'rd_profile_v1'
-};
+      <label>Nama Dokter</label>
+      <input id="namaDokter" placeholder="dr. Agung Satria">
+  <main class="container">
+    <section id="konsul" class="tab">
+      <h3>Form Konsul</h3>
 
-let historyData = loadLocal(STORAGE.history, []);
-let templates = loadLocal(STORAGE.templates, []);
-let draft = loadLocal(STORAGE.draft, {});
-let settings = loadLocal(STORAGE.settings, { theme: 'light' });
+      <label>Lokasi</label>
+      <select id="lokasi">
+        <option value="IGD">IGD</option>
+        <option value="Poli">Poli</option>
+        <option value="Ruangan">Ruangan</option>
+      </select>
+      <label>Nama dokter (yang akan tampil pada konsul)</label>
+      <input id="nama_dokter" placeholder="dr. Nama">
 
-// ---------- Safer DOM ready ----------
-document.addEventListener('DOMContentLoaded', ()=>{
+      <label>Nama RS</label>
+      <input id="namaRS" placeholder="RSAM">
+      <label>RS / Unit (bisa diubah)</label>
+      <div class="inline-two">
+        <input id="rs" placeholder="Nama RS">
+        <input id="unit" placeholder="Unit (IGD/POLI)">
+      </div>
 
-  // ---------- footer ----------
-  (function initFooter(){
-    const footerEl = document.querySelector('footer.footer');
-    if(footerEl) footerEl.innerHTML = `<div>© Ruang Dokter v1.4.4 — by Agung Satria</div><div>v1.4.4</div>`;
-  })();
+      <hr>
+      <label>Nama pasien</label>
+      <input id="nama" placeholder="">
 
-  // ---------- theme ----------
-  function applyTheme(){
-    if(settings.theme === 'dark'){
-      document.documentElement.style.setProperty('--bg','#071022');
-      document.documentElement.style.setProperty('--card','#0b1220');
-      document.documentElement.style.setProperty('--text','#e6eef6');
-      document.documentElement.style.setProperty('--muted','#9aa6b2');
-      document.querySelectorAll('input,textarea,select').forEach(el=>{ el.style.background='var(--card)'; el.style.color='var(--text)'; el.style.borderColor='#1f2a37'; });
-    } else {
-      document.documentElement.style.removeProperty('--bg'); document.documentElement.style.removeProperty('--card');
-      document.documentElement.style.removeProperty('--text'); document.documentElement.style.removeProperty('--muted');
-      document.querySelectorAll('input,textarea,select').forEach(el=>{ el.style.background=''; el.style.color=''; el.style.borderColor=''; });
-    }
-  }
-  applyTheme();
-  if(qs('themeToggle')) qs('themeToggle').addEventListener('click', ()=>{
-    settings.theme = settings.theme === 'light' ? 'dark' : 'light';
-    saveLocal(STORAGE.settings, settings); applyTheme();
-  });
+      <label>Nama Pasien</label>
+      <input id="namaPasien" placeholder="">
+      <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+        <div style="flex:1">
+      <div class="inline-two">
+        <div>
+<label>Usia (tahun)</label>
+<input id="usia" type="number" min="0" placeholder="">
+</div>
+        <div style="width:120px">
+          <label>JK</label>
+          <select id="jk"><option value="F">F</option><option value="M">M</option></select>
+        <div>
+          <label>Jenis Kelamin</label>
+          <select id="jk"><option value="">-</option><option value="F">Perempuan</option><option value="M">Laki-laki</option></select>
+</div>
+</div>
 
- // ---------- Profile Overlay (fixed, safer) ----------
-(function profileModuleFixed(){
-  const STORAGE_KEY = STORAGE.profile;
-  const overlay = qs('setupOverlay');
-  const headerName = qs('headerNamaDokter');
-  const btnSave = qs('setupSaveBtn');
-  const btnSkip = qs('setupSkipBtn');
-  const editBtn = qs('editProfileBtn');
-  const resetBtn = qs('resetProfile');
+      <div id="bbRow" style="display:none">
+        <label>Berat Badan (kg)</label>
+      <div id="bbRow" class="hidden-row">
+        <label>Berat badan (kg)</label>
+<input id="bb" placeholder="">
+        <div class="muted">Field BB muncul otomatis jika usia &lt; 18 tahun.</div>
+</div>
 
-  function loadProfile(){ return loadLocal(STORAGE_KEY, null); }
-  function saveProfile(p){ saveLocal(STORAGE_KEY, p); }
-  function applyProfileToUI(p){
-    if(!p) return;
-    // IMPORTANT: apply only to doctor/profile fields, NOT patient name
-    if(qs('nama_dokter')) setVal('nama_dokter', p.nama_dokter || '');
-    if(qs('rs')) setVal('rs', p.rs || '');
-    if(qs('unit')) setVal('unit', p.unit || '');
-    if(headerName) headerName.textContent = `${p.nama_dokter || ''}${p.rs ? ' — ' + p.rs : ''}${p.unit ? ' ('+p.unit+')':''}`;
-  }
+      <label>Diagnosis (Dx)</label>
+      <input id="dx" placeholder="">
 
-  function showOverlay(){ if(overlay){ overlay.classList.add('active'); overlay.style.display = 'flex'; } }
-  function hideOverlay(){ if(overlay){ overlay.classList.remove('active'); overlay.style.display = 'none'; } }
+      <label>Subjektif (S)</label>
+      <textarea id="s" rows="2" placeholder=""></textarea>
+      <label>Dx (Diagnosis)</label><input id="dx" placeholder="">
+      <label>S (Subjective)</label><textarea id="s" placeholder=""></textarea>
 
-  // init
-  const existing = loadProfile();
-  if(existing && existing.nama_dokter){
-    applyProfileToUI(existing);
-    hideOverlay();
-  } else {
-    showOverlay();
-  }
+      <label>GCS (E V M)</label>
+      <div class="gcs-row">
+        <input id="gcsE" maxlength="1" placeholder="E">
+        <input id="gcsV" maxlength="1" placeholder="V">
+        <input id="gcsM" maxlength="1" placeholder="M">
+      </div>
 
-  // Save button
-  if(btnSave){
-    btnSave.addEventListener('click', ()=>{
-      const nama = (qs('setup_nama_dokter')?.value || '').trim();
-      const rs = (qs('setup_rs')?.value || '').trim();
-      const unit = (qs('setup_unit')?.value || '').trim();
-      if(!nama || !rs || !unit){
-        if(qs('setupErr')) qs('setupErr').style.display = 'block';
-        return;
-      }
-      if(qs('setupErr')) qs('setupErr').style.display = 'none';
-      const p = { nama_dokter: nama, rs: rs, unit: unit, saved_at: new Date().toISOString() };
-      saveProfile(p);
-      applyProfileToUI(p);
-      hideOverlay();
-    });
-  }
+      <label>Vitals / TTV</label>
+      <div class="vitals-grid">
+        <div><label>TD (sistolik/diastolik)</label><input id="td" placeholder="177/98"></div>
+        <div><label>HR</label><input id="hr" placeholder="102"></div>
+        <div><label>RR</label><input id="rr" placeholder="25"></div>
+        <div><label>T (°C)</label><input id="temp" placeholder="36.4"></div>
+        <div style="grid-column: span 2;">
+          <label>SpO₂</label>
+          <div style="display:flex;gap:6px;align-items:center">
+            <input id="spo2" placeholder="99" style="width:80px">
+            <select id="o2type" style="width:160px">
+              <option value="RA">Room Air</option>
+              <option value="NC">O₂ NC</option>
+              <option value="FM">O₂ Face Mask</option>
+              <option value="NRM">O₂ NRM</option>
+              <option value="VM">O₂ Venturi Mask</option>
+              <option value="HFNC">O₂ HFNC</option>
+              <option value="VENT">O₂ Ventilator</option>
+            </select>
+            <input id="o2flow" placeholder="lpm/Fi%" style="width:90px">
+      <div class="row-inline">
+        <div class="card-mini">
+          <label>GCS</label>
+          <div class="gcs-row"><input id="gcsE" maxlength="1" placeholder="E"><input id="gcsV" maxlength="1" placeholder="V"><input id="gcsM" maxlength="1" placeholder="M"></div>
+        </div>
+        <div class="card-mini">
+          <label>TTV</label>
+          <div class="vitals-grid">
+            <input id="td" placeholder="TD (mmHg) - ex: 120/80">
+            <input id="hr" placeholder="HR (x/m)">
+            <input id="rr" placeholder="RR (x/m)">
+            <input id="temp" placeholder="T (°C) - use comma or dot">
+</div>
+          <div class="muted">Pilih type lalu isi flow (lpm) atau FiO₂ (%) sesuai jenis.</div>
+          <div id="map_qsofa" class="muted"></div>
+          <div id="ews_box" style="margin-top:6px;"></div>
+</div>
+</div>
 
-  // Skip (if exists)
-  if(btnSkip) btnSkip.addEventListener('click', ()=>{ hideOverlay(); });
+      <label>Pemeriksaan Fisik (isi sesuai format kamu)</label>
+      <div class="section-block">
+        <label>Kepala</label>
+        <input id="kepala" placeholder="CA -/-, SI -/-">
 
-  // Edit Profile (opens overlay and prefill)
-  if(editBtn){
-    editBtn.addEventListener('click', ()=>{
-      const p = loadProfile() || {nama_dokter:'',rs:'',unit:''};
-      if(qs('setup_nama_dokter')) qs('setup_nama_dokter').value = p.nama_dokter || '';
-      if(qs('setup_rs')) qs('setup_rs').value = p.rs || '';
-      if(qs('setup_unit')) qs('setup_unit').value = p.unit || '';
-      showOverlay();
-    });
-  }
+        <label>Thorax</label>
+        <input id="thorax" placeholder="ves +/+, rh -/-, wh -/-. BJ reg, m -, g -">
+      <label>SpO₂</label>
+      <div class="inline-three">
+        <input id="spo2" placeholder="SpO₂ (%)">
+        <select id="o2type"><option value="RA">Room Air</option><option value="NC">O₂ NC</option><option value="NRM">O₂ NRM</option><option value="FM">O₂ FM</option><option value="VM">O₂ VM</option><option value="HFNC">HFNC</option><option value="VENT">Ventilator</option></select>
+        <input id="o2flow" class="hidden" placeholder="flow (LPM)">
+      </div>
 
-  // Reset profile
-  if(resetBtn) resetBtn.addEventListener('click', ()=>{
-    if(confirm('Reset profil dokter?')){ localStorage.removeItem(STORAGE_KEY); alert('Profil terhapus. Silakan reload halaman.'); location.reload(); }
-  });
+        <label>Abdomen</label>
+        <input id="abdomen" placeholder="supel, BU +">
+      <label>Pemeriksaan Fisik</label>
+      <input id="kepala" value="Kepala: CA -/-, SI -/-">
+      <input id="thorax" value="Thorax: ves +/+, rh -/-, wh -/-. BJ reg, m -, g -.">
+      <input id="abdomen" value="Abdomen: supel, BU +">
+      <input id="ekstremitas" value="Ekstremitas: akral hangat, CRT <2s">
 
-  // Ensure overlay click outside closes (but only when active)
-  if(overlay){
-    overlay.addEventListener('click', (e)=>{
-      if(e.target === overlay){
-        // do not auto close if no profile exists yet (force setup) — only close if profile exists
-        const p = loadProfile();
-        if(p && p.nama_dokter) hideOverlay();
-      }
-    });
-  }
-})();
+        <label>Ekstremitas</label>
+        <input id="ekstremitas" placeholder="akral hangat, CRT <2s">
+      <label>P (Plan / Terapi)</label><textarea id="p" placeholder=""></textarea>
 
-  // ---------- Basic field list & autosave ----------
-  const FIELDS = ['nama_dokter','rs','unit','nama','usia','jk','bb','dx','s','gcsE','gcsV','gcsM','td','hr','rr','temp','spo2','o2type','o2flow','kepala','thorax','abdomen','ekstremitas','pemeriksaan_lain','p'];
+        <label>Catatan fisik lain (opsional)</label>
+        <input id="lain" placeholder="">
+      <div class="row" style="margin-top:12px">
+        <button id="buatBtn" class="btn">Buat & Tampilkan</button>
+        <button id="copyBtn" class="btn outline">Copy</button>
+        <button id="saveBtn" class="btn">Simpan ke History</button>
+        <button id="resetBtn" class="btn secondary">Reset</button>
+</div>
 
-  // restore draft
-  (function restoreDraft(){
-    draft = loadLocal(STORAGE.draft, {});
-    for(const k in draft){ if(qs(k)) qs(k).value = draft[k]; }
-    // show bb if usia <18
-    onAgeChange();
-  })();
+      <label>Objektif (O) — auto dari GCS, TTV & Fisik (bisa diedit)</label>
+      <textarea id="o" rows="4"></textarea>
+      <h4>Hasil Konsul</h4><div id="hasil" class="output"></div>
 
-  // autosave indicator
-  let lastAuto = null;
-  function showAutosave(){
-    lastAuto = new Date();
-    if(qs('autosaveIndicator')) qs('autosaveIndicator').textContent = `Autosaved ${new Date().toLocaleTimeString()}`;
-  }
+      <label>P (Terapi / Plan)</label>
+      <textarea id="p" rows="4" placeholder="- IVFD NaCl 0.9% 20 tpm
+- NGT DC
+- Inj. Ranitidin 50 mg/12 jam
+- O2 NC 3 lpm"></textarea>
+      <h4 style="margin-top:18px">Riwayat Konsul (klik View untuk isi form)</h4>
+      <div id="historyInline"></div>
+    </section>
 
-  // attach input listeners for autosave
-  FIELDS.forEach(id=>{
-    if(!qs(id)) return;
-    qs(id).addEventListener('input', ()=>{
-      draft[id] = getVal(id);
-      saveLocal(STORAGE.draft, draft);
-      showAutosave();
-      if(['gcsE','gcsV','gcsM','td','hr','rr','temp','spo2'].includes(id)) computeVitals();
-      if(id === 'usia') onAgeChange();
-    });
-  });
+      <div class="row" style="margin-top:8px">
+        <button id="buatBtn" class="btn" style="flex:1">Buat & Tampilkan</button>
+        <button id="copyBtn" class="btn secondary" style="width:110px" disabled>Copy</button>
+        <button id="resetBtn" class="btn outline" style="width:110px">Reset</button>
+    <section id="calculator" class="tab" style="display:none">
+      <h3>Kalkulator Klinis</h3>
+      <div class="calc-grid">
+        <div class="card-small">
+          <h4>BMI</h4>
+          <label>Berat (kg)</label><input id="calc_bb">
+          <label>Tinggi (cm)</label><input id="calc_tb">
+          <button id="calc_bmi" class="btn small">Hitung BMI</button>
+          <div id="bmi_res" class="muted"></div>
+        </div>
+        <div class="card-small">
+          <h4>MAP</h4>
+          <label>TD Sistolik</label><input id="map_sys">
+          <label>TD Diastolik</label><input id="map_dia">
+          <button id="calc_map" class="btn small">Hitung MAP</button>
+          <div id="map_res" class="muted"></div>
+        </div>
+        <div class="card-small">
+          <h4>EWS Manual</h4>
+          <label>RR</label><input id="ews_rr"><label>SpO2</label><input id="ews_spo2"><label>HR</label><input id="ews_hr"><label>T (°C)</label><input id="ews_temp"><label>GCS total</label><input id="ews_gcs"><button id="calc_ews" class="btn small">Hitung EWS</button><div id="ews_res"></div>
+        </div>
+        <div class="card-small">
+          <h4>BSA</h4>
+          <label>Berat (kg)</label><input id="bsa_bb"><label>Tinggi (cm)</label><input id="bsa_tb"><button id="calc_bsa" class="btn small">Hitung BSA</button><div id="bsa_res"></div>
+        </div>
+        <div class="card-small">
+          <h4>Anion Gap</h4>
+          <label>Na</label><input id="ag_na"><label>Cl</label><input id="ag_cl"><label>HCO3</label><input id="ag_hco3"><button id="calc_ag" class="btn small">Hitung AG</button><div id="ag_res"></div>
+        </div>
+        <div class="card-small">
+          <h4>GFR (CKD-EPI)</h4>
+          <label>Usia</label><input id="gfr_age"><label>Jenis Kelamin</label><select id="gfr_sex"><option value="F">Perempuan</option><option value="M">Laki-laki</option></select><label>Kreatinin (mg/dL)</label><input id="gfr_scr"><button id="calc_gfr" class="btn small">Hitung GFR</button><div id="gfr_res"></div>
+        </div>
+</div>
+    </section>
 
-  // ---------- Age -> BB row ----------
-  function onAgeChange(){
-    const us = parseFloat(String(getVal('usia')).replace(',','.')) || 0;
-    if(hasEl('bbRow')) { if(us && us < 18) qs('bbRow').classList.remove('hidden-row'); else qs('bbRow').classList.add('hidden-row'); }
-  }
-  onAgeChange();
+      <div class="row" style="margin-top:8px">
+        <button id="aiQuickBtn" class="btn outline" style="flex:1">Analisis AI (Quick → ChatGPT)</button>
+        <button id="saveBtn" class="btn" style="width:140px">Simpan ke History</button>
+    <section id="history" class="tab" style="display:none">
+      <h3>History</h3>
+      <div class="history-controls">
+        <button id="filter_all" class="btn small">Semua</button>
+        <button id="filter_notdone" class="btn small outline">Belum Selesai</button>
+        <button id="filter_done" class="btn small outline">Selesai</button>
+        <button id="exportJson" class="btn small secondary">Backup JSON</button>
+        <input id="importFile" type="file" style="display:none">
+        <button id="importBtn" class="btn small">Restore JSON</button>
+</div>
+      <div id="historyList"></div>
+    </section>
 
-  // ---------- Vitals & scores ----------
-  function safeNum(v){ const n = parseFloat(String(v||'').replace(',','.')); return isNaN(n)? null : n; }
-  function computeMapFromTd(td){
-    if(!td || !td.includes('/')) return null;
-    const parts = td.split('/').map(x=>safeNum(x));
-    if(parts.length<2 || parts.some(x=>x===null)) return null;
-    return Math.round((parts[0] + 2*parts[1])/3);
-  }
-  function parseGcsTotal(){ const e = safeNum(getVal('gcsE'))||0; const v = safeNum(getVal('gcsV'))||0; const m = safeNum(getVal('gcsM'))||0; const sum = e+v+m; return sum>0? sum : null; }
-  function computeQSOFA(rr,gcsTotal,sbp){ let score=0; if(rr!==null && rr>=22) score++; if(gcsTotal!==null && gcsTotal<15) score++; if(sbp!==null && sbp<=100) score++; return score; }
-  function calcEwsFromInputs(rr, sp, hr, t, gcs){ let score=0; if(rr!==null){ if(rr>=25) score+=3; else if(rr>=21) score+=2; else if(rr>=12) score+=0; else if(rr>=9) score+=1; else score+=3;} if(sp!==null){ if(sp<=91) score+=3; else if(sp<=93) score+=2; else if(sp<=95) score+=1;} if(hr!==null){ if(hr<=40) score+=3; else if(hr<=50) score+=1; else if(hr<=90) score+=0; else if(hr<=110) score+=1; else if(hr<=130) score+=2; else score+=3;} if(t!==null){ if(t<=35) score+=3; else if(t<=36) score+=1; else if(t<=38) score+=0; else if(t<=39) score+=1; else score+=2;} if(gcs && gcs<15) score+=3; return score; }
+      <div style="margin-top:6px">
+        <label>Template Cepat</label>
+        <select id="templateSelect"></select>
+        <div style="display:flex;gap:8px;margin-top:6px">
+          <button id="applyTemplate" class="btn small">Pakai</button>
+          <button id="addTemplate" class="btn small secondary">Tambah Template</button>
+          <button id="manageTemplate" class="btn small outline">Kelola Template</button>
+        </div>
+    <section id="templates" class="tab" style="display:none">
+      <h3>Template</h3>
+      <div class="template-controls">
+        <input id="templateTitle" placeholder="Judul template (mis: Sepsis berat)">
+        <label>Isi Pemeriksaan Fisik</label><textarea id="templatePhys"></textarea>
+        <label>Isi Terapi (P)</label><textarea id="templatePlan"></textarea>
+        <div class="row"><button id="addTemplate" class="btn">Tambah Template</button><button id="clearTemplates" class="btn secondary">Hapus Semua Template</button></div>
+</div>
 
-  function interpretEws(score){ if(score>=7) return {label:'Kritis', cls:'ews-bad', advice:'Pertimbangkan intervensi segera/rujuk ke ICU'}; if(score>=5) return {label:'Perhatian', cls:'ews-warn', advice:'Monitor ketat, evaluasi ulang terapi'}; return {label:'Normal', cls:'ews-good', advice:'Observasi rutin'}; }
+      <div id="templateList"></div>
+</section>
 
-  function computeVitals(){
-    const td = getVal('td')||'';
-    const hr = safeNum(getVal('hr'));
-    const rr = safeNum(getVal('rr'));
-    const temp = safeNum(getVal('temp'));
-    const spo2 = safeNum(getVal('spo2'));
-    const gcsTotal = parseGcsTotal();
-    const map = computeMapFromTd(td);
-    const sbp = td.includes('/')? safeNum(td.split('/')[0]) : null;
-    const qsofa = computeQSOFA(rr, gcsTotal, sbp);
-    const ews = calcEwsFromInputs(rr, spo2, hr, temp, gcsTotal||15);
-    const interp = interpretEws(ews);
-    if(hasEl('map_qsofa')) setVal('map_qsofa', (map?`MAP: ${map}`:'') + (qsofa?` qSOFA: ${qsofa}`:''));
-    if(hasEl('ews_box')) qs('ews_box').innerHTML = `<div class="${interp.cls}">EWS: ${ews} — ${interp.label}</div><div class="muted">${interp.advice}</div>`;
-    return {map,qsofa,ews,interp};
-  }
-  ['gcsE','gcsV','gcsM','td','hr','rr','temp','spo2'].forEach(id=>{ if(qs(id)) qs(id).addEventListener('input', computeVitals); });
+    <aside class="right">
+      <h4>Hasil Konsul</h4>
+      <div id="warnings" class="warnings"></div>
+      <div id="ewsBadge" class="ews"></div>
+      <div id="hasil" class="output" role="status" aria-live="polite"></div>
 
-  // o2flow visibility
-  if(qs('o2type')) qs('o2type').addEventListener('change', ()=>{ const v=getVal('o2type'); if(v==='RA' || !v) { if(qs('o2flow')) qs('o2flow').style.display='none'; setVal('o2flow',''); } else if(qs('o2flow')) qs('o2flow').style.display='inline-block'; });
-  (function initO2(){ if(qs('o2flow')){ if(getVal('o2type')==='RA') qs('o2flow').style.display='none'; }} )();
+      <h4 style="margin-top:12px">History</h4>
+      <div id="history" class="history"></div>
 
-  // ---------- Build output (correct order: GCS -> TTV -> SpO2 -> (enter) -> phys -> P) ----------
-  function buildOutput(includeIdentity=true){
-    // greeting
-    const h=new Date().getHours();
-    let greeting='Selamat malam dokter.';
-    if(h>=4 && h<11) greeting='Selamat pagi dokter.'; else if(h>=11 && h<15) greeting='Selamat siang dokter.'; else if(h>=15 && h<18) greeting='Selamat sore dokter.';
+      <div style="margin-top:10px" class="muted">Catatan: AI Quick Copy membuka ChatGPT web; data pasien tidak dikirim tanpa persetujuan.</div>
+    </aside>
+</main>
 
-    const namaDok = getVal('nama_dokter');
-    const unit = getVal('unit');
-    const rs = getVal('rs');
-    const nama = getVal('nama');
-    const usia = getVal('usia');
-    const jk = getVal('jk');
-    const bb = getVal('bb');
-    const pref = (usia && parseFloat(usia)<18)? 'An.' : (jk==='F'?'Ny.':(jk==='M'?'Tn.':'')); 
-    const ident = includeIdentity ? `${pref?pref+' ':''}${nama}\n${usia?usia+' tahun':''}${(bb && pref==='An.')? ', BB '+bb+' kg' : ''}` : '';
+  <!-- Settings modal -->
+  <div id="settings" class="modal" aria-hidden="true">
+    <div class="content">
+      <h4>Pengaturan</h4>
+      <label>Nama Dokter</label><input id="setNama" placeholder="dr. Agung Satria">
+      <label>Nama RS</label><input id="setRS" placeholder="RSAM">
+      <label>Auto-prefix nama pasien</label>
+      <select id="setPrefix"><option value="on" selected>On</option><option value="off">Off</option></select>
+      <label>Jumlah shift</label><select id="setShift"><option>2</option><option selected>3</option><option>4</option></select>
+      <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
+        <button id="saveSet" class="btn">Simpan</button>
+        <button id="closeSet" class="btn secondary">Tutup</button>
+      </div>
+      <p class="muted" style="margin-top:8px">Pengaturan disimpan di perangkat ini (localStorage).</p>
+    </div>
+  </div>
 
-    const dx = getVal('dx')||'-';
-    const s = getVal('s')||'-';
-    const gcs = `GCS: E${getVal('gcsE')||'-'}V${getVal('gcsV')||'-'}M${getVal('gcsM')||'-'}`;
-    let o = `${gcs}\n`;
-    if(getVal('td')) o += `TD: ${getVal('td')}\n`;
-    if(getVal('hr')) o += `HR: ${getVal('hr')}\n`;
-    if(getVal('rr')) o += `RR: ${getVal('rr')}\n`;
-    if(getVal('temp')) o += `T: ${getVal('temp')}\n`;
-    if(getVal('spo2')){
-      const o2t = getVal('o2type')||'RA';
-      const o2f = getVal('o2flow')||'';
-      const lpm = (o2t==='RA' || !o2t) ? 'room air' : (o2f? `${o2f} LPM` : o2t);
-      o += `SpO₂: ${getVal('spo2')}% ${lpm}\n`;
-    }
-    o += `\n`; // blank line before phys
+  <!-- Manage templates modal -->
+  <div id="manageTemplates" class="modal" aria-hidden="true">
+    <div class="content">
+      <h4>Kelola Template</h4>
+      <div id="templateList"></div>
+      <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
+        <button id="closeTpl" class="btn secondary">Tutup</button>
+      </div>
+    </div>
+  </div>
+  <footer class="footer">
+    <div>© Ruang Dokter 2025 — v1.4.1</div>
+    <div><button id="feedbackBtn" class="btn small outline">Saran & Masukan</button></div>
+  </footer>
 
-    const kepala = getVal('kepala') || 'Kepala: CA -/-, SI -/-';
-    const thorax = getVal('thorax') || 'Thorax: ves +/+, rh -/-, wh -/-. BJ reg, m -, g -.';
-    const abdomen = getVal('abdomen') || 'Abdomen: supel, BU +';
-    const ekstremitas = getVal('ekstremitas') || 'Ekstremitas: akral hangat, CRT <2s';
-    let pemeriksaan = `${kepala}\n${thorax}\n${abdomen}\n${ekstremitas}\n`;
-    const tambahan = getVal('pemeriksaan_lain');
-    if(tambahan) pemeriksaan += `${tambahan}\n`;
+  <footer class="footer">© 2025 Ruang Dokter</footer>
+  <div id="feedbackModal" class="modal"><div class="modal-content"><h4>Saran & Masukan</h4><p>Punya ide, kritik, atau saran untuk Ruang Dokter? Klik tombol di bawah untuk mengirim melalui WhatsApp.</p><div class="row"><a id="waLink" class="btn" href="#" target="_blank">Kirim lewat WhatsApp</a><button id="fbClose" class="btn secondary">Tutup</button></div></div></div>
 
-    const plan = getVal('p') || '-';
-
-    const headerLine = includeIdentity ? `${greeting}\nIzin dok dengan ${namaDok}, dokter jaga ${unit} ${rs}.\nIzin konsul pasien dokter.\n\n${ident}\n\n` : `${greeting}\nIzin konsul pasien dokter.\n\n`;
-
-    const output = `${headerLine}Dx: ${dx}\n\nS: ${s}\n\nO:\n${o}${pemeriksaan}\nP:\n${plan}\n\nMohon advice selanjutnya.\nTerima kasih dokter.`;
-    return output;
-  }
-
-  // ---------- Buttons: buat/copy/save/reset ----------
-  if(qs('buatBtn')) qs('buatBtn').addEventListener('click', ()=>{ if(hasEl('hasil')) setVal('hasil', buildOutput(true)); computeVitals(); });
-  if(qs('copyBtn')) qs('copyBtn').addEventListener('click', ()=> navigator.clipboard.writeText(buildOutput(true)).then(()=> alert('Teks konsul tersalin.')));
-  if(qs('copyNoIdBtn')) qs('copyNoIdBtn').addEventListener('click', ()=> navigator.clipboard.writeText(buildOutput(false)).then(()=> alert('Teks konsul (tanpa identitas) tersalin.')));
-  if(qs('resetBtn')) qs('resetBtn').addEventListener('click', ()=>{
-    const defaults = {kepala:'',thorax:'',abdomen:'',ekstremitas:''};
-    FIELDS.forEach(id=>{ if(qs(id)) setVal(id,''); });
-    // restore default phys text if desired
-    setVal('kepala', defaults.kepala);
-    setVal('thorax', defaults.thorax);
-    setVal('abdomen', defaults.abdomen);
-    setVal('ekstremitas', defaults.ekstremitas);
-    draft = {}; saveLocal(STORAGE.draft, draft);
-    if(hasEl('hasil')) setVal('hasil','');
-    computeVitals();
-    onAgeChange();
-  });
-
-  if(qs('saveBtn')) qs('saveBtn').addEventListener('click', ()=>{
-    const snapshot = {}; FIELDS.forEach(k=> snapshot[k] = getVal(k));
-    const profileSnap = loadLocal(STORAGE.profile, null);
-    const item = { id: 'h_'+Date.now(), created_at: new Date().toISOString(), name: snapshot['nama']||'(no name)', age: snapshot['usia']||'', dx: snapshot['dx']||'', text: buildOutput(true), snapshot, profile_snapshot: profileSnap, done:false, note:'' };
-    historyData.unshift(item); saveLocal(STORAGE.history, historyData);
-    // reset after save
-    if(hasEl('resetBtn')) qs('resetBtn').click();
-    renderHistory();
-    alert('Tersimpan ke history.');
-  });
-
-  // ---------- History rendering ----------
-  function renderHistory(){
-    const c = qs('historyList'); if(!c) return;
-    const filter = getVal('historyFilter') || 'all'; const q = getVal('historySearch') || '';
-    c.innerHTML = '';
-    let list = historyData.slice();
-    if(filter==='done') list = list.filter(h=>h.done); else if(filter==='undone') list = list.filter(h=>!h.done);
-    if(q) list = list.filter(h => (h.name||'').toLowerCase().includes(q.toLowerCase()) || (h.dx||'').toLowerCase().includes(q.toLowerCase()));
-    if(list.length===0){ c.innerHTML = '<div class="muted">Belum ada history.</div>'; return; }
-    list.forEach(h=>{
-      const item = document.createElement('div'); item.className = 'history-item';
-      const left = document.createElement('div'); left.style.flex='1';
-      left.innerHTML = `<strong>${h.name||'-'} — ${h.age||'-'} th</strong><div class="muted">${h.dx||''}</div><div class="muted">${new Date(h.created_at).toLocaleString()}</div>${h.done?'<div style="color:#10b981;font-size:12px">✅ Selesai</div>':''}`;
-      const right = document.createElement('div'); right.style.display='flex'; right.style.flexDirection='column'; right.style.gap='6px';
-      const top = document.createElement('div'); top.style.display='flex'; top.style.gap='6px';
-
-      const btnView = document.createElement('button'); btnView.className='btn small outline'; btnView.textContent='View';
-      btnView.addEventListener('click', ()=>{ if(h.snapshot){ Object.keys(h.snapshot).forEach(k=>{ if(qs(k)) setVal(k, h.snapshot[k]); } ); if(qs('o2type')) qs('o2type').dispatchEvent(new Event('change')); if(hasEl('hasil')) setVal('hasil', h.text); } else if(h.text) populateFormFromText(h.text); document.querySelector('[data-tab="konsul"]').click(); window.scrollTo({top:0,behavior:'smooth'}); });
-
-      const btnCopy = document.createElement('button'); btnCopy.className='btn small'; btnCopy.textContent='Copy'; btnCopy.addEventListener('click', ()=> navigator.clipboard.writeText(h.text).then(()=> alert('Teks konsul tersalin dari history.')));
-      const btnDone = document.createElement('button'); btnDone.className='btn small'; btnDone.textContent = h.done? 'Selesai':'Mark Selesai'; if(h.done) btnDone.style.background='#10b981';
-      btnDone.addEventListener('click', ()=>{ h.done=!h.done; saveLocal(STORAGE.history, historyData); renderHistory(); });
-      const btnDel = document.createElement('button'); btnDel.className='btn small secondary'; btnDel.textContent='Hapus'; btnDel.addEventListener('click', ()=>{ if(confirm('Hapus entry ini?')){ historyData = historyData.filter(x=>x.id!==h.id); saveLocal(STORAGE.history, historyData); renderHistory(); }});
-
-      top.appendChild(btnView); top.appendChild(btnCopy); top.appendChild(btnDone); top.appendChild(btnDel);
-      const note = document.createElement('input'); note.placeholder='Keterangan tambahan...'; note.value = h.note || ''; note.addEventListener('change', ()=>{ h.note = note.value; saveLocal(STORAGE.history, historyData); });
-      right.appendChild(top); right.appendChild(note);
-      item.appendChild(left); item.appendChild(right);
-      c.appendChild(item);
-    });
-  }
-  // filters/search events
-  if(qs('historyFilter')) qs('historyFilter').addEventListener('change', renderHistory);
-  if(qs('historySearch')) qs('historySearch').addEventListener('input', renderHistory);
-
-  renderHistory();
-
-  // ---------- Templates ----------
-  function renderTemplates(){ const c = qs('templateList'); if(!c) return; c.innerHTML = ''; if(!templates.length) { c.innerHTML = '<div class="muted">Belum ada template.</div>'; return; } templates.forEach((t,i)=>{ const div = document.createElement('div'); div.className='history-item'; div.innerHTML = `<div style="flex:1"><strong>${t.title}</strong><div class="muted">${t.dx||''}</div></div>`; const btnUse = document.createElement('button'); btnUse.className='btn small'; btnUse.textContent='Gunakan'; btnUse.addEventListener('click', ()=>{ if(qs('dx')) setVal('dx', t.dx||t.title||''); if(qs('kepala')) setVal('kepala', t.phys||''); if(qs('thorax')) setVal('thorax',''); if(qs('abdomen')) setVal('abdomen',''); if(qs('ekstremitas')) setVal('ekstremitas',''); if(qs('p')) setVal('p', t.plan||''); document.querySelector('[data-tab="konsul"]').click(); }); const btnEdit = document.createElement('button'); btnEdit.className='btn small outline'; btnEdit.textContent='Edit'; btnEdit.addEventListener('click', ()=>{ if(qs('templateTitle')) setVal('templateTitle', t.title); if(qs('templateDx')) setVal('templateDx', t.dx); if(qs('templatePhys')) setVal('templatePhys', t.phys); if(qs('templatePlan')) setVal('templatePlan', t.plan); templates.splice(i,1); saveLocal(STORAGE.templates, templates); renderTemplates(); }); const btnDel = document.createElement('button'); btnDel.className='btn small secondary'; btnDel.textContent='Hapus'; btnDel.addEventListener('click', ()=>{ if(confirm('Hapus template ini?')){ templates.splice(i,1); saveLocal(STORAGE.templates, templates); renderTemplates(); } }); div.appendChild(btnUse); div.appendChild(btnEdit); div.appendChild(btnDel); c.appendChild(div); }); }
-  if(qs('addTemplate')) qs('addTemplate').addEventListener('click', ()=>{ const title = (getVal('templateTitle')||'').trim(); const dx = (getVal('templateDx')||'').trim(); const phys = (getVal('templatePhys')||'').trim(); const plan = (getVal('templatePlan')||'').trim(); if(!title){ alert('Isi judul template.'); return; } templates.unshift({id:'t_'+Date.now(), title, dx, phys, plan}); saveLocal(STORAGE.templates, templates); ['templateTitle','templateDx','templatePhys','templatePlan'].forEach(id=> setVal(id,'')); renderTemplates(); });
-  if(qs('clearTemplates')) qs('clearTemplates').addEventListener('click', ()=>{ if(confirm('Hapus semua template?')){ templates=[]; saveLocal(STORAGE.templates, templates); renderTemplates(); } });
-  renderTemplates();
-
-  // ---------- Calculators ----------
-  if(qs('calc_bmi')) qs('calc_bmi').addEventListener('click', ()=>{ const bb=safeNum(getVal('calc_bb')), tb=safeNum(getVal('calc_tb')); if(!bb||!tb){ if(hasEl('bmi_res')) setVal('bmi_res','Masukkan BB & TB'); return; } const m=tb/100; const bmi=bb/(m*m); let cat='Normal'; if(bmi<18.5) cat='Underweight'; else if(bmi<25) cat='Normal'; else if(bmi<30) cat='Overweight'; else cat='Obese'; if(hasEl('bmi_res')) setVal('bmi_res', `BMI: ${bmi.toFixed(1)} (${cat})`); });
-  if(qs('calc_map')) qs('calc_map').addEventListener('click', ()=>{ const s=safeNum(getVal('map_sys')), d=safeNum(getVal('map_dia')); if(s===null||d===null){ if(hasEl('map_res')) setVal('map_res','Masukkan TD'); return; } const map=(s+2*d)/3; if(hasEl('map_res')) setVal('map_res',`MAP: ${map.toFixed(1)} mmHg`); });
-  if(qs('calc_ews')) qs('calc_ews').addEventListener('click', ()=>{ const rr=safeNum(getVal('ews_rr'))||0, sp=safeNum(getVal('ews_spo2'))||0, hr=safeNum(getVal('ews_hr'))||0, t=safeNum(getVal('ews_temp'))||0, gcs=parseInt(getVal('ews_gcs'))||15; const score = calcEwsFromInputs(rr,sp,hr,t,gcs); const interp = interpretEws(score); if(hasEl('ews_res')) setVal('ews_res', `EWS: ${score} — ${interp.label}\n${interp.advice}`); });
-  if(qs('calc_bsa')) qs('calc_bsa').addEventListener('click', ()=>{ const bb=safeNum(getVal('bsa_bb')), tb=safeNum(getVal('bsa_tb')); if(!bb||!tb){ if(hasEl('bsa_res')) setVal('bsa_res','Masukkan BB & TB'); return; } const bsa = Math.sqrt((bb*tb)/3600); if(hasEl('bsa_res')) setVal('bsa_res', `BSA: ${bsa.toFixed(2)} m²`); });
-  if(qs('calc_ag')) qs('calc_ag').addEventListener('click', ()=>{ const na=safeNum(getVal('ag_na')), cl=safeNum(getVal('ag_cl')), hco3=safeNum(getVal('ag_hco3')); if(na===null||cl===null||hco3===null){ if(hasEl('ag_res')) setVal('ag_res','Masukkan Na/Cl/HCO3'); return; } if(hasEl('ag_res')) setVal('ag_res', `Anion gap: ${(na-(cl+hco3)).toFixed(1)}`); });
-  if(qs('calc_gfr')) qs('calc_gfr').addEventListener('click', ()=>{ const age=safeNum(getVal('gfr_age')), sex=getVal('gfr_sex'), scr=safeNum(getVal('gfr_scr')); if(!age||!scr){ if(hasEl('gfr_res')) setVal('gfr_res','Masukkan umur & kreatinin'); return; } const k = sex==='F'?0.7:0.9; const a = sex==='F'?-0.329:-0.411; const minScr_k = Math.min(scr/k,1); const maxScr_k = Math.max(scr/k,1); const egfr = 141*Math.pow(minScr_k,a)*Math.pow(maxScr_k,-1.209)*Math.pow(0.993,age)*(sex==='F'?1.018:1); if(hasEl('gfr_res')) setVal('gfr_res', `eGFR (estimasi): ${Math.round(egfr)} mL/min/1.73m²`); });
-
-  // ---------- Import/Export ----------
-  if(qs('exportJson')) qs('exportJson').addEventListener('click', ()=>{ try{ const blob = new Blob([JSON.stringify(historyData,null,2)],{type:'application/json'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download='ruangdokter_history.json'; a.click(); }catch(e){ alert('Gagal export'); } });
-  if(qs('importBtn')) qs('importBtn').addEventListener('click', ()=>{ if(qs('importFile')) qs('importFile').click(); });
-  if(hasEl('importFile')) qs('importFile').addEventListener('change', (ev)=>{ const f = ev.target.files && ev.target.files[0]; if(!f) return; const fr = new FileReader(); fr.onload = (e)=>{ try{ const parsed = JSON.parse(e.target.result); if(Array.isArray(parsed)){ historyData = parsed.concat(historyData); saveLocal(STORAGE.history, historyData); renderHistory(); alert('Restore selesai.'); } else alert('File JSON tidak valid.'); } catch(err){ alert('File JSON tidak valid.'); } }; fr.readAsText(f); });
-
-  // ---------- Populate from text (fallback) ----------
-  function populateFormFromText(text){
-    if(!text) return;
-    try{
-      const lines = text.split('\n').map(l=>l.trim());
-      // simple parsing to extract GCS, TD, HR, RR, T, SpO2, kepala/thorax/abdomen/ekstremitas, P block
-      const gcsLine = lines.find(l=>/GCS:\s*E\d+V\d+M\d+/i.test(l));
-      if(gcsLine){ const m=gcsLine.match(/E(\d+)V(\d+)M(\d+)/i); if(m){ if(qs('gcsE')) setVal('gcsE', m[1]); if(qs('gcsV')) setVal('gcsV', m[2]); if(qs('gcsM')) setVal('gcsM', m[3]); } }
-      const tdLine = lines.find(l=>/^TD:/i.test(l)); if(tdLine && qs('td')) setVal('td', tdLine.replace(/^TD:\s*/i,''));
-      const hrLine = lines.find(l=>/^HR:/i.test(l)); if(hrLine && qs('hr')) setVal('hr', hrLine.replace(/^HR:\s*/i,''));
-      const rrLine = lines.find(l=>/^RR:/i.test(l)); if(rrLine && qs('rr')) setVal('rr', rrLine.replace(/^RR:\s*/i,''));
-      const tLine = lines.find(l=>/^T:/i.test(l)); if(tLine && qs('temp')) setVal('temp', tLine.replace(/^T:\s*/i,''));
-      const spoLine = lines.find(l=>/SpO/i); if(spoLine && qs('spo2')){ const m = spoLine.match(/(\d+)%/); if(m) setVal('spo2', m[1]); const o2m = spoLine.match(/(NC|NRM|VENT|room air|RA)/i); if(o2m && qs('o2type')) setVal('o2type', o2m[1]); const lpm = spoLine.match(/(\d+)\s*LPM/i); if(lpm && qs('o2flow')) setVal('o2flow', lpm[1]); }
-      // physical blocks
-      const kepalaLine = lines.find(l=>/^Kepala:/i.test(l)); if(kepalaLine && qs('kepala')) setVal('kepala', kepalaLine.replace(/^Kepala:\s*/i,''));
-      const thoraxLine = lines.find(l=>/^Thorax:/i.test(l)); if(thoraxLine && qs('thorax')) setVal('thorax', thoraxLine.replace(/^Thorax:\s*/i,''));
-      const abdLine = lines.find(l=>/Abdomen:|Abd:/i); if(abdLine && qs('abdomen')) setVal('abdomen', abdLine.replace(/^Abd(enom)?:\s*/i,''));
-      const ekstLine = lines.find(l=>/^Ekst(remitas)?:/i); if(ekstLine && qs('ekstremitas')) setVal('ekstremitas', ekstLine.replace(/^Ekst(remitas)?:\s*/i,''));
-      computeVitals(); onAgeChange();
-    } catch(e){ console.warn('parse error', e); }
-  }
-
-  // ---------- Feedback WA ----------
-  const feedbackBtn = qs('feedbackBtn'); const feedbackModal = qs('feedbackModal'); const waLink = qs('waLink'); const fbClose = qs('fbClose');
-  if(feedbackBtn && feedbackModal && waLink){ feedbackBtn.addEventListener('click', ()=>{ feedbackModal.style.display='flex'; waLink.href = `https://wa.me/6281717427171?text=${encodeURIComponent('Halo Ruang Dokter! Saya ingin memberikan saran/masukan: ')}`; }); }
-  if(fbClose && feedbackModal) fbClose.addEventListener('click', ()=> feedbackModal.style.display='none');
-  if(feedbackModal) feedbackModal.addEventListener('click', e=>{ if(e.target===feedbackModal) feedbackModal.style.display='none'; });
-
-  // ---------- Export / Reset data ----------
-  if(qs('clearAllData')) qs('clearAllData').addEventListener('click', ()=>{ if(confirm('Hapus semua history & template?')){ historyData=[]; templates=[]; saveLocal(STORAGE.history, historyData); saveLocal(STORAGE.templates, templates); renderHistory(); renderTemplates(); alert('Data dihapus.'); } });
-
-  // ---------- small utilities ----------
-  computeVitals();
-
-  // initial render
-  renderHistory();
-  renderTemplates();
-
-}); // end DOMContentLoaded
+<script src="script.js"></script>
+</body>

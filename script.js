@@ -56,52 +56,87 @@ document.addEventListener('DOMContentLoaded', ()=>{
     saveLocal(STORAGE.settings, settings); applyTheme();
   });
 
-  // ---------- Profile Overlay (initial) ----------
-  (function profileModule(){
-    const profile = loadLocal(STORAGE.profile, null);
-    const overlay = qs('setupOverlay');
-    const headerName = qs('headerNamaDokter');
+ // ---------- Profile Overlay (fixed, safer) ----------
+(function profileModuleFixed(){
+  const STORAGE_KEY = STORAGE.profile;
+  const overlay = qs('setupOverlay');
+  const headerName = qs('headerNamaDokter');
+  const btnSave = qs('setupSaveBtn');
+  const btnSkip = qs('setupSkipBtn');
+  const editBtn = qs('editProfileBtn');
+  const resetBtn = qs('resetProfile');
 
-    function applyProfile(p){
-      if(!p) return;
-      if(qs('nama_dokter')) setVal('nama_dokter', p.nama_dokter || '');
-      if(qs('rs')) setVal('rs', p.rs || '');
-      if(qs('unit')) setVal('unit', p.unit || '');
-      if(headerName) headerName.textContent = `${p.nama_dokter || ''} ${p.rs ? '— ' + p.rs + (p.unit ? ' ('+p.unit+')' : '') : ''}`;
-    }
-    // initial
-    if(profile && profile.nama_dokter){
-      applyProfile(profile);
-      if(overlay) overlay.style.display = 'none';
-    } else {
-      if(overlay) overlay.style.display = 'flex';
-    }
+  function loadProfile(){ return loadLocal(STORAGE_KEY, null); }
+  function saveProfile(p){ saveLocal(STORAGE_KEY, p); }
+  function applyProfileToUI(p){
+    if(!p) return;
+    // IMPORTANT: apply only to doctor/profile fields, NOT patient name
+    if(qs('nama_dokter')) setVal('nama_dokter', p.nama_dokter || '');
+    if(qs('rs')) setVal('rs', p.rs || '');
+    if(qs('unit')) setVal('unit', p.unit || '');
+    if(headerName) headerName.textContent = `${p.nama_dokter || ''}${p.rs ? ' — ' + p.rs : ''}${p.unit ? ' ('+p.unit+')':''}`;
+  }
 
-    // buttons
-    if(qs('setupSaveBtn')) qs('setupSaveBtn').addEventListener('click', ()=>{
+  function showOverlay(){ if(overlay){ overlay.classList.add('active'); overlay.style.display = 'flex'; } }
+  function hideOverlay(){ if(overlay){ overlay.classList.remove('active'); overlay.style.display = 'none'; } }
+
+  // init
+  const existing = loadProfile();
+  if(existing && existing.nama_dokter){
+    applyProfileToUI(existing);
+    hideOverlay();
+  } else {
+    showOverlay();
+  }
+
+  // Save button
+  if(btnSave){
+    btnSave.addEventListener('click', ()=>{
       const nama = (qs('setup_nama_dokter')?.value || '').trim();
       const rs = (qs('setup_rs')?.value || '').trim();
       const unit = (qs('setup_unit')?.value || '').trim();
-      if(!nama || !rs || !unit){ if(qs('setupErr')) qs('setupErr').style.display = 'block'; return; }
-      const p = { nama_dokter: nama, rs: rs, unit: unit, saved_at: new Date().toISOString(), version: '1' };
-      saveLocal(STORAGE.profile, p);
-      applyProfile(p);
-      if(overlay) overlay.style.display = 'none';
+      if(!nama || !rs || !unit){
+        if(qs('setupErr')) qs('setupErr').style.display = 'block';
+        return;
+      }
+      if(qs('setupErr')) qs('setupErr').style.display = 'none';
+      const p = { nama_dokter: nama, rs: rs, unit: unit, saved_at: new Date().toISOString() };
+      saveProfile(p);
+      applyProfileToUI(p);
+      hideOverlay();
     });
-    if(qs('setupSkipBtn')) qs('setupSkipBtn').addEventListener('click', ()=> { if(overlay) overlay.style.display = 'none'; });
+  }
 
-    if(qs('editProfileBtn')) qs('editProfileBtn').addEventListener('click', ()=>{
-      const p = loadLocal(STORAGE.profile, {nama_dokter:'',rs:'',unit:''});
-      qs('setup_nama_dokter').value = p.nama_dokter || '';
-      qs('setup_rs').value = p.rs || '';
-      qs('setup_unit').value = p.unit || '';
-      if(overlay) overlay.style.display = 'flex';
-    });
+  // Skip (if exists)
+  if(btnSkip) btnSkip.addEventListener('click', ()=>{ hideOverlay(); });
 
-    if(qs('resetProfile')) qs('resetProfile').addEventListener('click', ()=>{
-      if(confirm('Reset profil dokter?')){ localStorage.removeItem(STORAGE.profile); alert('Profil dihapus. Silakan reload untuk set profil baru.'); location.reload(); }
+  // Edit Profile (opens overlay and prefill)
+  if(editBtn){
+    editBtn.addEventListener('click', ()=>{
+      const p = loadProfile() || {nama_dokter:'',rs:'',unit:''};
+      if(qs('setup_nama_dokter')) qs('setup_nama_dokter').value = p.nama_dokter || '';
+      if(qs('setup_rs')) qs('setup_rs').value = p.rs || '';
+      if(qs('setup_unit')) qs('setup_unit').value = p.unit || '';
+      showOverlay();
     });
-  })();
+  }
+
+  // Reset profile
+  if(resetBtn) resetBtn.addEventListener('click', ()=>{
+    if(confirm('Reset profil dokter?')){ localStorage.removeItem(STORAGE_KEY); alert('Profil terhapus. Silakan reload halaman.'); location.reload(); }
+  });
+
+  // Ensure overlay click outside closes (but only when active)
+  if(overlay){
+    overlay.addEventListener('click', (e)=>{
+      if(e.target === overlay){
+        // do not auto close if no profile exists yet (force setup) — only close if profile exists
+        const p = loadProfile();
+        if(p && p.nama_dokter) hideOverlay();
+      }
+    });
+  }
+})();
 
   // ---------- Basic field list & autosave ----------
   const FIELDS = ['nama_dokter','rs','unit','nama','usia','jk','bb','dx','s','gcsE','gcsV','gcsM','td','hr','rr','temp','spo2','o2type','o2flow','kepala','thorax','abdomen','ekstremitas','pemeriksaan_lain','p'];

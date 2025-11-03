@@ -26,35 +26,66 @@
     <section id="konsul" class="tab">
       <h3>Form Konsul</h3>
 
-      <label>Nama dokter (yang akan tampil pada konsul)</label>
-      <input id="nama_dokter" placeholder="dr. Nama">
-
-      <label>RS / Unit (bisa diubah)</label>
-      <div class="inline-two">
+<!-- === PROFIL DOKTER === -->
+<div class="card profile-card">
+  <div class="card-header">
+    <span class="card-title">Profil Dokter (yang akan tampil pada format konsul)</span>
+  </div>
+  <div class="card-body">
+    <div class="form-row horizontal">
+      <div class="col">
+        <label for="nama_dokter">Nama dokter</label>
+        <input id="nama_dokter" placeholder="dr. Nama">
+      </div>
+      <div class="col">
+        <label for="rs">Rumah Sakit</label>
         <input id="rs" placeholder="Nama RS">
-        <input id="unit" placeholder="Unit (IGD/POLI)">
       </div>
-
-      <label>Nama pasien</label>
-      <input id="nama" placeholder="">
-
-      <div class="inline-two">
-        <div>
-          <label>Usia (tahun)</label>
-          <input id="usia" type="number" min="0" placeholder="">
-        </div>
-        <div>
-          <label>Jenis Kelamin</label>
-          <select id="jk"><option value="">-</option><option value="F">Perempuan</option><option value="M">Laki-laki</option></select>
-        </div>
+      <div class="col">
+        <label for="unit">Unit</label>
+        <input id="unit" placeholder="IGD/POLI/Ruangan">
       </div>
+    </div>
+  </div>
+</div>
 
-      <div id="bbRow" class="hidden-row">
-        <label>Berat badan (kg)</label>
-        <input id="bb" placeholder="">
+<!-- === PEMISAH === -->
+<div class="separator" aria-hidden="true"></div>
+
+<!-- === IDENTITAS PASIEN === -->
+<div class="card patient-card">
+  <div class="card-header">
+    <span class="card-title">Identitas Pasien</span>
+  </div>
+  <div class="card-body">
+    <div class="form-row">
+      <label for="nama">Nama pasien</label>
+      <input id="nama" placeholder="Nama pasien">
+    </div>
+
+    <div class="form-row horizontal">
+      <div class="col">
+        <label for="usia">Usia</label>
+        <input id="usia" type="number" placeholder="Usia dalam tahun">
       </div>
+      <div class="col">
+        <label for="jk">Jenis Kelamin</label>
+        <select id="jk">
+          <option>-</option>
+          <option>Laki-laki</option>
+          <option>Perempuan</option>
+        </select>
+      </div>
+      <div class="col" id="bbRow" style="display:none;">
+        <label for="bb">BB (kg)</label>
+        <input id="bb" type="number" placeholder="BB (kg)">
+      </div>
+    </div>
+  </div>
+</div>
 
-      <label>Dx (Diagnosis)</label><input id="dx" placeholder="">
+      <label>Dx (Diagnosis)</label><textarea id="dx" placeholder=""></textarea>
+
       <label>S (Subjective)</label><textarea id="s" placeholder=""></textarea>
 
       <div class="row-inline">
@@ -75,12 +106,27 @@
         </div>
       </div>
 
-      <label>SpO₂</label>
-      <div class="inline-three">
-        <input id="spo2" placeholder="SpO₂ (%)">
-        <select id="o2type"><option value="RA">Room Air</option><option value="NC">O₂ NC</option><option value="NRM">O₂ NRM</option><option value="FM">O₂ FM</option><option value="VM">O₂ VM</option><option value="HFNC">HFNC</option><option value="VENT">Ventilator</option></select>
-        <input id="o2flow" class="hidden" placeholder="flow (LPM)">
-      </div>
+<div class="form-row horizontal">
+  <div class="col">
+    <label for="spo2">SpO₂ (%)</label>
+    <input id="spo2" type="number" placeholder="99">
+  </div>
+
+  <div class="col">
+    <label for="oxType">Jenis O₂</label>
+    <select id="oxType">
+      <option value="room air">Room air</option>
+      <option value="O₂ NC">O₂ NC</option>
+      <option value="O₂ NRM">O₂ NRM</option>
+      <option value="O₂ Ventilator">O₂ Ventilator</option>
+    </select>
+  </div>
+
+  <div class="col" id="flowCol" style="display:none;">
+    <label for="flow">Laju (LPM)</label>
+    <input id="flow" type="number" placeholder="5">
+  </div>
+</div>
 
       <label>Pemeriksaan Fisik</label>
       <input id="kepala" value="Kepala: CA -/-, SI -/-">
@@ -99,8 +145,7 @@
 
       <h4>Hasil Konsul</h4><div id="hasil" class="output"></div>
 
-      <h4 style="margin-top:18px">Riwayat Konsul (klik View untuk isi form)</h4>
-      <div id="historyInline"></div>
+    
     </section>
 
     <section id="calculator" class="tab" style="display:none">

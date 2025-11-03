@@ -1,2 +1,99 @@
 :root{--logo-blue:#0b74c6;--bg:#f6fbfe;--card:#fff;--text:#072032;--muted:#6b7280;--accent:var(--logo-blue);--accent-600:#075fa8;--danger:#ef4444;--warn:#f59e0b;--success:#10b981}
 *{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,Arial;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}header.header{display:flex;justify-content:space-between;align-items:center;padding:12px 18px;background:var(--logo-blue);color:#fff} .brand{display:flex;align-items:center;gap:12px} .brand img{display:block} .brand-text{font-weight:700;font-size:18px;margin-left:4px} .nav{display:flex;gap:6px;padding:10px 16px;background:#fff;border-bottom:1px solid #eef2f7} .nav .tabbtn{background:transparent;border:none;padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:600} .nav .tabbtn.active{background:#eef9ff;color:var(--accent-600)} .container{max-width:980px;margin:18px auto;padding:12px} .tab{background:var(--card);padding:14px;border-radius:10px;box-shadow:0 6px 20px rgba(2,6,23,0.04)} label{display:block;margin-top:8px;font-weight:600} input,textarea,select{width:100%;padding:8px;margin-top:6px;border-radius:8px;border:1px solid #e6edf3;background:transparent} textarea{min-height:70px} .row{display:flex;gap:8px;margin-top:10px} .row-inline{display:flex;gap:12px} .inline-two{display:flex;gap:8px} .inline-two > *{flex:1} .inline-three{display:flex;gap:8px} .inline-three > *{flex:1} .card-mini{flex:1;background:#fff;padding:10px;border-radius:8px;border:1px solid #eef2f7} .vitals-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px} .gcs-row{display:flex;gap:6px} .btn{background:var(--accent);color:#fff;padding:8px 10px;border-radius:8px;border:none;cursor:pointer} .btn.small{padding:6px} .btn.outline{background:transparent;border:1px solid var(--accent);color:var(--accent)} .btn.secondary{background:transparent;border:1px solid #d1d5db;color:var(--muted)} .output{white-space:pre-wrap;background:#f1f5f9;padding:12px;border-radius:8px;border:1px solid #e2e8f0;min-height:140px;margin-top:8px} .muted{color:var(--muted);margin-top:8px} .history-controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px} .history-item{border:1px solid #e6edf3;padding:10px;border-radius:8px;margin-bottom:8px;background:#fff;display:flex;justify-content:space-between;gap:8px} footer.footer{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;background:#fff;border-top:1px solid #eef2f7;position:sticky;bottom:0} .modal{display:none;position:fixed;inset:0;background:rgba(2,6,23,0.45);align-items:center;justify-content:center} .modal .modal-content{background:#fff;padding:12px;border-radius:8px;width:360px} .ews-good{color:var(--success);font-weight:700}.ews-warn{color:var(--warn);font-weight:700}.ews-bad{color:var(--danger);font-weight:700} .calc-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px} .card-small{background:#fff;padding:12px;border-radius:8px;border:1px solid #eef2f7} .hidden{display:none} .hidden-row{display:none} @media(max-width:720px){.container{padding:8px}.row{flex-direction:column}.row-inline{flex-direction:column}.vitals-grid{grid-template-columns:repeat(2,1fr)} .calc-grid{grid-template-columns:1fr}}
+/* === Layout sejajar untuk usia, jk, bb === */
+.form-row.horizontal {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+}
+.form-row.horizontal .col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.form-row.horizontal .col input,
+.form-row.horizontal .col select {
+  width: 100%;
+}
+@media (max-width: 600px) {
+  .form-row.horizontal {
+    flex-direction: column;
+  }
+}
+
+/* === PATCH: tata letak SpO₂ baris sejajar === */
+.form-row.horizontal {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+}
+
+.form-row.horizontal .col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.form-row.horizontal .col input,
+.form-row.horizontal .col select {
+  width: 100%;
+}
+
+@media (max-width: 600px) {
+  .form-row.horizontal {
+    flex-direction: column;
+  }
+}
+
+/* === PATCH: pemisah dokter & pasien === */
+.card {
+  background: var(--card, #fff);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.card-title {
+  font-weight: 600;
+  font-size: 15px;
+  color: #0b74c6; /* biru medis */
+}
+
+.separator {
+  height: 2px;
+  background: linear-gradient(90deg, rgba(11, 116, 198, 0.15), rgba(11, 116, 198, 0));
+  margin: 10px 0 18px;
+  border-radius: 2px;
+}
+
+.form-row.horizontal {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+}
+
+.form-row.horizontal .col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.form-row.horizontal .col input,
+.form-row.horizontal .col select {
+  width: 100%;
+}
+
+@media (max-width: 600px) {
+  .form-row.horizontal {
+    flex-direction: column;
+  }
+}
+

@@ -299,12 +299,25 @@ function buildOutput(){
   if(getVal('rr')) o += `RR: ${getVal('rr')}\n`;
   if(getVal('temp')) o += `T: ${getVal('temp')}\n`;
 
-  if(getVal('spo2')){
-    const o2type = getVal('o2type') || 'RA';
-    const o2flow = getVal('o2flow') || '';
-    const lpm = (o2type === 'RA' || o2type === '') ? 'room air' : (o2flow ? `${o2flow} LPM` : o2type);
-    o += `SpO₂: ${getVal('spo2')}% ${lpm}\n`;
+  // --- SpO2 + jenis O2 + flow (integrasi ke output) ---
+const spo2Val = getVal('spo2').trim();
+const oxType = (getVal('oxType') || '').trim(); // pastikan id = 'oxType' di HTML
+const flow = (getVal('flow') || '').trim();     // pastikan id = 'flow' di HTML
+
+if (spo2Val) {
+  let spo2Text = `${spo2Val}%`;
+
+  // jika ada jenis oksigen dan bukan "room air", tambahkan jenis + LPM kalau ada
+  if (oxType && oxType.toLowerCase() !== 'room air') {
+    spo2Text += ` ${oxType}`;
+    if (flow) spo2Text += ` ${flow} lpm`;
+  } else {
+    // default: tampilkan 'room air' bila tidak dipilih/atau explicit RA
+    spo2Text += ` ${oxType ? oxType : 'room air'}`;
   }
+
+  o += `SpO²: ${spo2Text}\n`;
+}
 
   // blank line between vitals and physical exam (as requested)
   o += `\n`;
@@ -320,7 +333,7 @@ function buildOutput(){
 
   const plan = getVal('p') || '-';
 
-  const output = `${greeting}\nIzin dok dengan ${namaDok}, dokter jaga ${unit} ${rs}.\nIzin konsul pasien dokter.\n\n${ident}\n\nDx: ${dx}\n\nS: ${s}\n\nO:\n${o}${pemeriksaan}P:\n${plan}\n\nMohon advice selanjutnya.\nTerima kasih dokter.`;
+  const output = `${greeting}\nIzin dok dengan ${namaDok}, dokter jaga ${unit} ${rs}.\nIzin konsul pasien dokter.\n\n${ident}\n\nDx: ${dx}\n\nS: ${s}\n\nO:\n${o}${pemeriksaan}\nP:\n${plan}\n\nMohon advice selanjutnya.\nTerima kasih dokter.`;
   return output;
 }
 
@@ -692,3 +705,47 @@ function buildOutput(){
 
   // Done DOMContentLoaded
 }); // end DOMContentLoaded
+
+// === PATCH: tampilkan BB hanya jika usia < 18 ===
+function onAgeChange(){
+  const raw = (getVal('usia') || '').toString().trim().replace(',', '.');
+  const umur = parseFloat(raw);
+  const bbRow = document.getElementById('bbRow');
+  if (!bbRow) return;
+
+  if (!isNaN(umur) && umur < 18) {
+    bbRow.style.display = ''; // show
+  } else {
+    bbRow.style.display = 'none'; // hide
+    // opsional: kosongkan BB saat disembunyikan
+    if (document.getElementById('bb')) document.getElementById('bb').value = '';
+  }
+}
+
+// panggil saat halaman siap + saat usia berubah
+document.addEventListener('DOMContentLoaded', () => {
+  const usiaEl = document.getElementById('usia');
+  if (usiaEl) usiaEl.addEventListener('input', onAgeChange);
+  onAgeChange(); // initial
+});
+
+// === PATCH: otomatisasi Laju O₂ muncul hanya bila perlu ===
+function updateFlowVisibility() {
+  const ox = document.getElementById('oxType');
+  const flowCol = document.getElementById('flowCol');
+  if (!ox || !flowCol) return;
+
+  if (ox.value === 'room air') {
+    flowCol.style.display = 'none';
+    const flow = document.getElementById('flow');
+    if (flow) flow.value = '';
+  } else {
+    flowCol.style.display = '';
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const ox = document.getElementById('oxType');
+  if (ox) ox.addEventListener('change', updateFlowVisibility);
+  updateFlowVisibility();
+});

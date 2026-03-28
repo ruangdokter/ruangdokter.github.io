@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Ruang Dokter — v1.4.1</title>
+<title>SIPAT IGD</title>
 <link rel="icon" href="assets/favicon.png">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <header class="header">
-    <div class="brand"><img id="logo" src="assets/logo_header.png" alt="Ruang Dokter" height="40"><span class="brand-text">Ruang Dokter</span></div>
+    <div class="brand"><img id="logo" src="assets/logo_header.png" alt="SIPAT IGD" height="40"><span class="brand-text">SIPAT IGD RSUD Dr. H. Abdul Moeloek</span></div>
     <div class="header-actions">
       <button id="themeToggle" class="btn small" title="Toggle theme">🌙</button>
     </div>
@@ -57,17 +57,20 @@
   <div class="card-header">
     <span class="card-title">Identitas Pasien</span>
   </div>
-  <div class="card-body">
-    <div class="form-row">
-      <label for="nama">Nama pasien</label>
-      <input id="nama" placeholder="Nama pasien">
-    </div>
 
-    <div class="form-row horizontal">
+  <div class="card-body">
+    <div class="form-row horizontal identitas-grid">
+      
+      <div class="col">
+        <label for="nama">Nama pasien</label>
+        <input id="nama" placeholder="Nama pasien">
+      </div>
+
       <div class="col">
         <label for="usia">Usia</label>
         <input id="usia" type="number" placeholder="Usia dalam tahun">
       </div>
+
       <div class="col">
         <label for="jk">Jenis Kelamin</label>
         <select id="jk">
@@ -76,13 +79,16 @@
           <option>Perempuan</option>
         </select>
       </div>
+
       <div class="col" id="bbRow" style="display:none;">
         <label for="bb">BB (kg)</label>
         <input id="bb" type="number" placeholder="BB (kg)">
       </div>
+
     </div>
   </div>
 </div>
+
 
       <label>Dx (Diagnosis)</label><textarea id="dx" placeholder=""></textarea>
 
@@ -91,7 +97,17 @@
       <div class="row-inline">
         <div class="card-mini">
           <label>GCS</label>
-          <div class="gcs-row"><input id="gcsE" maxlength="1" placeholder="E"><input id="gcsV" maxlength="1" placeholder="V"><input id="gcsM" maxlength="1" placeholder="M"></div>
+          <div class="gcs-row">
+  <span class="mini-tag">E</span>
+  <input id="gcsE" maxlength="1" placeholder="">
+
+  <span class="mini-tag">V</span>
+  <input id="gcsV" maxlength="1" placeholder="">
+
+  <span class="mini-tag">M</span>
+  <input id="gcsM" maxlength="1" placeholder="">
+</div>
+
         </div>
         <div class="card-mini">
           <label>TTV</label>
@@ -134,16 +150,23 @@
       <input id="abdomen" value="Abdomen: supel, BU +">
       <input id="ekstremitas" value="Ekstremitas: akral hangat, CRT <2s">
 
-      <label>P (Plan / Terapi)</label><textarea id="p" placeholder=""></textarea>
+<label>P (Plan / Terapi)</label><textarea id="p" placeholder="- "></textarea>
 
-      <div class="row" style="margin-top:12px">
-        <button id="buatBtn" class="btn">Buat & Tampilkan</button>
-        <button id="copyBtn" class="btn outline">Copy</button>
-        <button id="saveBtn" class="btn">Simpan ke History</button>
-        <button id="resetBtn" class="btn secondary">Reset</button>
-      </div>
+      <div class="row" style="margin-top:12px; flex-wrap:wrap; gap:6px;">
+  <button id="buatBtn" class="btn">Buat & Tampilkan</button>
+  <button id="copyBtn" class="btn outline">Copy All</button>
 
-      <h4>Hasil Konsul</h4><div id="hasil" class="output"></div>
+  <!-- 🔥 NEW -->
+  <button class="btn small outline" onclick="copySOAP('s')">Copy S</button>
+  <button class="btn small outline" onclick="copySOAP('o')">Copy O</button>
+  <button class="btn small outline" onclick="copySOAP('a')">Copy A</button>
+  <button class="btn small outline" onclick="copySOAP('p')">Copy P</button>
+
+  <button id="saveBtn" class="btn">Simpan ke History</button>
+  <button id="resetBtn" class="btn secondary">Reset</button>
+</div>
+
+      <h4>Format Konsultasi</h4><div id="hasil" class="output"></div>
 
     
     </section>
@@ -211,12 +234,96 @@
   </main>
 
   <footer class="footer">
-    <div>© Ruang Dokter 2025 — v1.4.1</div>
+    <div>© SIPAT IGD RSUD ABDOEL MOELOEK</div>
     <div><button id="feedbackBtn" class="btn small outline">Saran & Masukan</button></div>
   </footer>
 
   <div id="feedbackModal" class="modal"><div class="modal-content"><h4>Saran & Masukan</h4><p>Punya ide, kritik, atau saran untuk Ruang Dokter? Klik tombol di bawah untuk mengirim melalui WhatsApp.</p><div class="row"><a id="waLink" class="btn" href="#" target="_blank">Kirim lewat WhatsApp</a><button id="fbClose" class="btn secondary">Tutup</button></div></div></div>
 
 <script src="script.js"></script>
+
+<script>
+function autoDash(textareaId){
+  const el = document.getElementById(textareaId);
+
+  el.addEventListener("focus", () => {
+    if (el.value.trim() === "") {
+      el.value = "- ";
+    }
+  });
+
+  el.addEventListener("keydown", function(e) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      el.value += "\n- ";
+    }
+  });
+}
+
+autoDash("p");   // Plan / Terapi
+autoDashDx("dx");  // Diagnosis
+
+// 🔥 TAMBAHKAN INI DI SINI
+function copySOAP(type) {
+  const hasil = document.getElementById("hasil").innerText;
+
+  let text = "";
+
+  if (type === "s") {
+    const match = hasil.match(/S:\s*([\s\S]*?)(?=\nO:|\nP:|$)/i);
+    if (match) text = match[1].trim();
+  }
+
+  if (type === "o") {
+    const match = hasil.match(/O:\s*([\s\S]*?)(?=\nP:|$)/i);
+    if (match) text = match[1].trim();
+  }
+
+  if (type === "p") {
+    const match = hasil.match(/P:\s*([\s\S]*?)(?=\n\n|$)/i);
+    if (match) text = match[1].trim();
+  }
+
+  // 🔥 A diambil dari Dx
+  if (type === "a") {
+    const match = hasil.match(/Dx\s*[:-]\s*([\s\S]*?)(?=\nS:|$)/i);
+    if (match) text = match[1].trim();
+  }
+
+  if (!text) {
+    alert("Bagian tidak ditemukan / kosong");
+    return;
+  }
+
+  const finalText = text;
+
+  navigator.clipboard.writeText(finalText);
+
+  console.log(`${type.toUpperCase()} copied`);
+}
+
+function autoDashDx(textareaId){
+  const el = document.getElementById(textareaId);
+
+  el.addEventListener("focus", () => {
+    if (el.value.trim() === "") {
+      el.value = "- ";
+    }
+  });
+
+  el.addEventListener("keydown", function(e) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      el.value += "\n- ";
+    }
+  });
+}
+
+</script>
+
+
+
+
 </body>
 </html>
+

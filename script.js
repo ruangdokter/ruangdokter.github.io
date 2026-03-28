@@ -316,7 +316,7 @@ if (spo2Val) {
     spo2Text += ` ${oxType ? oxType : 'room air'}`;
   }
 
-  o += `SpO²: ${spo2Text}\n`;
+  o += `SpO₂: ${spo2Text}\n`;
 }
 
   // blank line between vitals and physical exam (as requested)
@@ -333,7 +333,8 @@ if (spo2Val) {
 
   const plan = getVal('p') || '-';
 
-  const output = `${greeting}\nIzin dok dengan ${namaDok}, dokter jaga ${unit} ${rs}.\nIzin konsul pasien dokter.\n\n${ident}\n\nDx: ${dx}\n\nS: ${s}\n\nO:\n${o}${pemeriksaan}\nP:\n${plan}\n\nMohon advice selanjutnya.\nTerima kasih dokter.`;
+  const output = `${greeting}\nIzin dok dengan ${namaDok}, dokter jaga ${unit} ${rs}.\nIzin konsul pasien dokter.\n\n${ident}\n\nDx:
+${dx}\n\nS: ${s}\n\nO:\n${o}${pemeriksaan}\nP:\n${plan}\n\nMohon advice selanjutnya.\nTerima kasih dokter.`;
   return output;
 }
 

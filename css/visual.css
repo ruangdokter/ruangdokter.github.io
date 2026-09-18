@@ -2081,99 +2081,168 @@
 }
 
 /* =========================================================
-   RUANGDOKTER — CALCULATOR WORKSPACE
+   RUANGDOKTER — CLINICAL TOOLS
    ========================================================= */
 
-#toolsView .tools-search{
+#toolsView{
+  max-width:860px;
+}
+
+
+/* ---------------------------------------------------------
+   HEADER
+   --------------------------------------------------------- */
+
+#toolsView .page-head{
   margin-bottom:14px;
 }
 
-#toolsView .search-box{
+#toolsView .page-head h1{
+  font-size:26px;
+  line-height:1.15;
+}
+
+#toolsView .page-head .eyebrow{
+  margin-bottom:3px;
+}
+
+
+/* ---------------------------------------------------------
+   SEARCH
+   --------------------------------------------------------- */
+
+#toolsView > .search-box{
+  width:100%;
+  min-height:42px;
+
+  margin-bottom:14px;
+
   border-radius:10px;
 }
 
+#toolsView > .search-box input{
+  font-size:12px;
+}
 
-/* -----------------------------------------
+
+/* ---------------------------------------------------------
+   TOOL LIST
+   --------------------------------------------------------- */
+
+#toolsView .tools-list{
+  display:flex;
+  flex-direction:column;
+  gap:9px;
+}
+
+
+/* ---------------------------------------------------------
    TOOL CARD
-   ----------------------------------------- */
+   --------------------------------------------------------- */
 
-#toolsView .tool-card{
-  margin-bottom:9px;
+#toolsView .calculator-card{
+  width:100%;
+  box-sizing:border-box;
 
-  padding:14px;
+  padding:14px 15px;
 
   background:#fff;
+
   border:1px solid var(--rd-line);
   border-radius:12px;
 
-  box-shadow:0 2px 8px rgba(25,45,80,.03);
-}
-
-#toolsView .tool-card:last-child{
-  margin-bottom:0;
+  box-shadow:
+    0 2px 8px rgba(25,45,80,.03);
 }
 
 
-/* -----------------------------------------
+/* ---------------------------------------------------------
    TOOL HEADER
-   ----------------------------------------- */
+   --------------------------------------------------------- */
 
-#toolsView .tool-card .eyebrow{
-  margin-bottom:3px;
+#toolsView .calculator-card > div:first-child{
+  min-width:0;
+}
+
+#toolsView .calculator-card .eyebrow{
+  display:inline-flex;
+  align-items:center;
+
+  margin:0 0 3px;
 
   font-size:8px;
+  line-height:1;
+
   font-weight:800;
   letter-spacing:.08em;
+
+  color:#718096;
 }
 
-#toolsView .tool-card h2{
+#toolsView .calculator-card h2{
   margin:0;
 
   font-size:14px;
   line-height:1.2;
+
+  color:var(--rd-text);
 }
 
-#toolsView .tool-card p{
+#toolsView .calculator-card > div:first-child p{
   margin:3px 0 0;
 
   font-size:10px;
-  line-height:1.35;
+  line-height:1.3;
 
   color:var(--rd-muted);
 }
 
 
-/* -----------------------------------------
-   INPUT AREA
-   ----------------------------------------- */
+/* ---------------------------------------------------------
+   CALCULATOR BODY
+   --------------------------------------------------------- */
 
-#toolsView .tool-card .tool-inputs{
-  display:grid;
-  grid-template-columns:repeat(2,minmax(0,1fr));
-
-  gap:9px;
-
+#toolsView .calculator-body{
   margin-top:11px;
 }
 
-#toolsView .tool-card .field{
+
+/* ---------------------------------------------------------
+   INPUT GRID
+   --------------------------------------------------------- */
+
+#toolsView .calc-grid{
+  display:grid;
+
+  grid-template-columns:
+    repeat(2,minmax(0,1fr));
+
+  gap:9px;
+
+  margin:0;
+}
+
+#toolsView .calc-grid .field{
   min-width:0;
 }
 
-#toolsView .tool-card label{
+#toolsView .calc-grid label{
   display:block;
 
-  margin-bottom:4px;
+  margin:0 0 4px;
 
   font-size:9px;
+  line-height:1.2;
+
   font-weight:700;
 
   color:#667085;
 }
 
-#toolsView .tool-card input,
-#toolsView .tool-card select{
+#toolsView .calc-grid input{
   width:100%;
+  box-sizing:border-box;
+
   min-height:38px;
 
   padding:7px 10px;
@@ -2184,56 +2253,74 @@
   background:#fff;
 
   font-size:11px;
+
+  transition:
+    border-color .15s ease,
+    box-shadow .15s ease;
 }
 
-#toolsView .tool-card input:focus,
-#toolsView .tool-card select:focus{
+#toolsView .calc-grid input:focus{
+  outline:none;
+
   border-color:#7aa5ff;
 
-  box-shadow:0 0 0 3px #dbe8ff;
-
-  outline:none;
+  box-shadow:
+    0 0 0 3px #dbe8ff;
 }
 
 
-/* -----------------------------------------
-   RESULT
-   ----------------------------------------- */
+/* ---------------------------------------------------------
+   THREE INPUTS
+   --------------------------------------------------------- */
 
-#toolsView .tool-card .tool-result{
-  min-height:34px;
+#toolsView .calc-grid .field:nth-child(3){
+  grid-column:auto;
+}
+
+
+/* ---------------------------------------------------------
+   RESULT
+   --------------------------------------------------------- */
+
+#toolsView .calc-result{
+  min-height:35px;
+  box-sizing:border-box;
 
   display:flex;
   align-items:center;
 
-  margin-top:9px;
+  margin-top:8px;
   padding:8px 10px;
 
-  border:1px solid #e5eaf1;
+  border:1px solid #e4e9f0;
   border-radius:8px;
 
   background:#f7f9fc;
 
+  color:#536174;
+
   font-size:10px;
-  line-height:1.35;
+  line-height:1.3;
+
+  font-weight:600;
 }
 
-#toolsView .tool-card .tool-result strong{
-  font-size:12px;
+#toolsView .calc-result:not(:empty){
+  color:#344054;
 }
 
 
-/* -----------------------------------------
-   TOOL DESCRIPTION
-   ----------------------------------------- */
+/* ---------------------------------------------------------
+   ANION GAP / 3 INPUTS
+   --------------------------------------------------------- */
 
-#toolsView .tool-card .tool-help{
-  margin-top:8px;
+@media (min-width:760px){
 
-  font-size:9px;
-  line-height:1.4;
+  #toolsView .calculator-card:has(#cAgNa) .calc-grid{
+    grid-template-columns:
+      repeat(3,minmax(0,1fr));
+  }
 
-  color:#8a94a6;
 }
 
 
@@ -2241,27 +2328,57 @@
    MOBILE
    ========================================================= */
 
-@media(max-width:759px){
+@media (max-width:759px){
 
-  #toolsView .tool-card{
+  #toolsView{
+    padding-top:18px;
+  }
+
+  #toolsView .page-head{
+    margin-bottom:11px;
+  }
+
+  #toolsView .page-head h1{
+    font-size:23px;
+  }
+
+  #toolsView > .search-box{
+    margin-bottom:11px;
+  }
+
+  #toolsView .tools-list{
+    gap:8px;
+  }
+
+  #toolsView .calculator-card{
     padding:13px;
 
     border-radius:11px;
   }
 
-  #toolsView .tool-card .tool-inputs{
-    grid-template-columns:1fr;
+  #toolsView .calculator-card h2{
+    font-size:14px;
+  }
 
-    gap:7px;
-
+  #toolsView .calculator-body{
     margin-top:10px;
   }
 
-  #toolsView .tool-card input,
-  #toolsView .tool-card select{
-    min-height:40px;
+  #toolsView .calc-grid{
+    grid-template-columns:1fr;
+    gap:7px;
+  }
 
+  #toolsView .calc-grid input{
+    min-height:40px;
     font-size:12px;
+  }
+
+  #toolsView .calc-result{
+    margin-top:8px;
+    min-height:37px;
+
+    font-size:10px;
   }
 
 }

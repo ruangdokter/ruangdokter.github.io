@@ -405,12 +405,6 @@ input:focus,select:focus,textarea:focus{border-color:#7ba5f6;box-shadow:0 0 0 3p
    RUANGDOKTER — CONSULTATION FORM NORMAL LAYOUT
    ========================================================= */
 
-#formView {
-  width: 100%;
-  max-width: 980px;
-  margin: 0 auto;
-}
-
 #formView .page-head {
   margin-bottom: 18px;
 }
@@ -489,4 +483,135 @@ input:focus,select:focus,textarea:focus{border-color:#7ba5f6;box-shadow:0 0 0 3p
   #formView textarea {
     min-height: 76px;
   }
+}
+
+/* =========================================================
+   RUANGDOKTER — APP LAYOUT V2
+   Sidebar & content alignment
+   ========================================================= */
+
+:root{
+  --sidebar-width:210px;
+  --content-gap:24px;
+  --content-max:960px;
+}
+
+
+/* Main application layout */
+.app-layout{
+  display:grid;
+  grid-template-columns:
+    var(--sidebar-width)
+    minmax(0,1fr);
+
+  gap:var(--content-gap);
+
+  width:100%;
+  max-width:1240px;
+  margin:0 auto;
+  padding:20px 24px 40px;
+  box-sizing:border-box;
+}
+
+
+/* Sidebar */
+.sidebar{
+  width:var(--sidebar-width);
+  min-width:0;
+}
+
+
+/* Main content */
+.main-content{
+  min-width:0;
+}
+
+
+/* Consultation form */
+#formView{
+  width:100%;
+  max-width:var(--content-max);
+  margin:0;
+}
+
+
+/* Patient list/detail */
+#patientsView,
+#detailView,
+#templatesView,
+#toolsView,
+#settingsView{
+  width:100%;
+  max-width:var(--content-max);
+  margin:0;
+}
+
+
+/* Page heading */
+#formView .page-head{
+  margin-bottom:16px;
+}
+
+
+/* =========================================================
+   LARGE SCREEN
+   ========================================================= */
+
+@media(min-width:1400px){
+
+  .app-layout{
+    max-width:1320px;
+    grid-template-columns:
+      220px
+      minmax(0,960px);
+  }
+
+}
+
+
+/* =========================================================
+   TABLET
+   ========================================================= */
+
+@media(max-width:900px){
+
+  .app-layout{
+    grid-template-columns:180px minmax(0,1fr);
+    gap:18px;
+    padding-left:16px;
+    padding-right:16px;
+  }
+
+  .sidebar{
+    width:180px;
+  }
+
+}
+
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media(max-width:700px){
+
+  .app-layout{
+    display:block;
+    padding:12px;
+  }
+
+  .sidebar{
+    width:100%;
+    margin-bottom:14px;
+  }
+
+  #formView,
+  #patientsView,
+  #detailView,
+  #templatesView,
+  #toolsView,
+  #settingsView{
+    max-width:none;
+  }
+
 }

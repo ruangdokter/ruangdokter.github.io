@@ -845,3 +845,149 @@
   }
 
 }
+
+/* =========================================================
+   RUANGDOKTER — CENTERED DESKTOP APP SHELL
+   ========================================================= */
+
+@media (min-width: 760px) {
+
+  /* Entire application stays centered */
+  .app-shell {
+    width: min(1120px, calc(100vw - 32px));
+    max-width: 1120px;
+    min-height: 100vh;
+    margin: 0 auto;
+    padding-bottom: 0;
+
+    display: grid;
+    grid-template-columns: 180px minmax(0, 1fr);
+    grid-template-rows: 64px minmax(0, 1fr);
+  }
+
+  /* Header spans the whole centered application */
+  .topbar {
+    grid-column: 1 / -1;
+    grid-row: 1;
+
+    width: 100%;
+    height: 64px;
+
+    padding: 0 18px;
+
+    position: sticky;
+    top: 0;
+  }
+
+  /* Sidebar becomes a normal column */
+  .bottom-nav {
+    grid-column: 1;
+    grid-row: 2;
+
+    position: sticky;
+
+    top: 80px;
+    left: auto;
+    right: auto;
+    bottom: auto;
+
+    width: 180px;
+    height: fit-content;
+
+    margin: 16px 0 20px;
+
+    border: 1px solid var(--rd-line);
+    border-radius: 14px;
+
+    padding: 8px;
+
+    background: #fff;
+
+    display: flex;
+    flex-direction: column;
+
+    box-shadow:
+      0 4px 16px rgba(25,45,80,.045);
+  }
+
+  /* Sidebar brand stays at the top */
+  .sidebar-brand {
+    padding: 8px 8px 14px;
+    border-bottom: 1px solid #edf0f4;
+  }
+
+  .sidebar-links {
+    padding-top: 10px;
+
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  /* Sidebar menu */
+  .nav-item {
+    width: 100%;
+    height: 40px;
+
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+
+    gap: 9px;
+    padding: 0 10px;
+
+    border: 0;
+    border-radius: 9px;
+
+    background: transparent;
+  }
+
+  .nav-item span {
+    width: 18px;
+    text-align: center;
+    font-size: 14px;
+  }
+
+  .nav-item small {
+    font-size: 12px;
+    font-weight: 650;
+  }
+
+  /* Main area */
+  .app-shell > main {
+    grid-column: 2;
+    grid-row: 2;
+
+    min-width: 0;
+
+    padding: 0 20px 40px;
+  }
+
+  /* Actual page content is centered inside main */
+  .view {
+    width: 100%;
+    max-width: 860px;
+
+    margin: 0 auto;
+
+    padding: 24px 0 40px;
+  }
+
+  /* Consultation form */
+  #formView {
+    max-width: 860px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  /* Other pages */
+  #patientsView,
+  #detailView,
+  #toolsView,
+  #templatesView {
+    max-width: 860px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}

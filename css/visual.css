@@ -797,3 +797,28 @@
 [hidden]{
   display:none !important;
 }
+
+@media (min-width:760px){
+
+  #formView .identity-grid{
+    display:grid;
+
+    grid-template-columns:
+      1.5fr
+      1fr
+      .8fr;
+
+    gap:10px;
+  }
+
+}
+
+@media (max-width:759px){
+
+  #formView .identity-grid{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:8px;
+  }
+
+}

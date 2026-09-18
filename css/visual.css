@@ -400,3 +400,356 @@ input:focus,select:focus,textarea:focus{border-color:#7ba5f6;box-shadow:0 0 0 3p
   }
 
 }
+
+/* =========================================================
+   RUANGDOKTER — CONSULTATION FORM COMPACT V2
+   ========================================================= */
+
+/* Main consultation page */
+#formView{
+  max-width:1100px;
+}
+
+/* Header */
+#formView .page-head{
+  margin-bottom:14px;
+}
+
+/* Create a compact desktop workspace */
+#formView{
+  display:grid;
+  grid-template-columns:minmax(0, 1fr) 330px;
+  column-gap:14px;
+  align-items:start;
+}
+
+/* Page title spans both columns */
+#formView > .page-head{
+  grid-column:1 / -1;
+}
+
+/* Main form sections stay left */
+#formView > .form-section{
+  grid-column:1;
+}
+
+/* Preview becomes right-side panel */
+#formView > .output-section{
+  grid-column:2;
+  grid-row:2 / span 10;
+
+  position:sticky;
+  top:78px;
+
+  margin-bottom:0;
+  align-self:start;
+}
+
+/* Save buttons stay under the form */
+#formView > .form-save-bar{
+  grid-column:1;
+}
+
+
+/* =========================================================
+   COMPACT SECTION
+   ========================================================= */
+
+#formView .form-section{
+  padding:14px;
+  margin-bottom:9px;
+  border-radius:14px;
+}
+
+#formView .section-heading{
+  padding:8px 10px;
+  margin-bottom:10px;
+  border-radius:9px;
+}
+
+#formView .section-heading h2{
+  font-size:13px;
+}
+
+
+/* Labels */
+#formView label{
+  margin-top:5px;
+  margin-bottom:4px;
+  font-size:10px;
+  font-weight:700;
+}
+
+#formView .field{
+  margin-bottom:7px;
+}
+
+
+/* Inputs */
+#formView input,
+#formView textarea,
+#formView select{
+  margin-top:0;
+  min-height:36px;
+  padding:8px 10px;
+  border-radius:8px;
+  font-size:12px;
+}
+
+#formView textarea{
+  min-height:72px;
+}
+
+
+/* =========================================================
+   IDENTITAS
+   ========================================================= */
+
+#formView .identity-grid{
+  display:grid;
+  grid-template-columns:
+    minmax(0,1.6fr)
+    minmax(130px,1fr)
+    minmax(110px,.75fr);
+  gap:10px;
+}
+
+
+/* Pediatric fields */
+#formView .pediatric-fields{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  gap:8px;
+  margin-top:8px;
+  padding-top:8px;
+}
+
+
+/* =========================================================
+   OBJECTIVE
+   ========================================================= */
+
+#formView .gcs-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:8px;
+}
+
+#formView .vitals-grid{
+  display:grid;
+  grid-template-columns:
+    minmax(150px,1.4fr)
+    repeat(3,minmax(70px,1fr));
+  gap:8px;
+}
+
+
+/* =========================================================
+   PHYSICAL EXAM
+   ========================================================= */
+
+#formView .physical-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+
+#formView .physical-grid textarea,
+#formView .physical-grid input{
+  min-height:38px;
+}
+
+
+/* =========================================================
+   PREVIEW PANEL
+   ========================================================= */
+
+#formView > .output-section{
+  padding:14px;
+  background:#fff;
+}
+
+#formView > .output-section .section-heading{
+  background:transparent;
+  padding:0;
+  margin-bottom:10px;
+}
+
+#formView > .output-section h2{
+  font-size:14px;
+}
+
+#formView .output-box{
+  min-height:420px;
+  max-height:calc(100vh - 245px);
+  overflow:auto;
+
+  padding:11px;
+
+  font-size:10px;
+  line-height:1.55;
+
+  background:#fafcff;
+  border:1px solid #e6ebf2;
+}
+
+
+/* Preview copy buttons */
+#formView .copy-grid{
+  display:grid;
+  grid-template-columns:
+    1.5fr
+    1fr
+    1fr
+    1fr
+    1fr;
+
+  gap:6px;
+
+  margin-top:8px;
+}
+
+#formView .copy-grid button{
+  min-height:32px;
+  padding:6px 7px;
+  font-size:10px;
+}
+
+
+/* =========================================================
+   SAVE BAR
+   ========================================================= */
+
+#formView > .form-save-bar{
+  position:relative !important;
+  bottom:auto !important;
+
+  display:flex;
+  justify-content:flex-end;
+  gap:7px;
+
+  padding:4px 0 20px;
+
+  background:transparent;
+}
+
+#formView > .form-save-bar button{
+  min-height:36px;
+  padding:8px 16px;
+}
+
+
+/* =========================================================
+   AUTO CLINICAL TOOLS
+   ========================================================= */
+
+#formView .clinical-auto-tools{
+  margin-top:8px;
+}
+
+#formView .auto-tools-grid{
+  display:grid;
+  grid-template-columns:
+    repeat(3,1fr);
+  gap:6px;
+}
+
+#formView .auto-tool{
+  padding:8px;
+  border-radius:8px;
+}
+
+#formView .auto-tool b{
+  font-size:15px;
+}
+
+#formView .auto-tool small{
+  font-size:9px;
+}
+
+
+/* =========================================================
+   BACK BUTTON
+   ========================================================= */
+
+#formView .page-head .back-btn{
+  width:34px;
+  height:34px;
+}
+
+
+/* =========================================================
+   DESKTOP WIDTH
+   ========================================================= */
+
+@media(min-width:1200px){
+
+  #formView{
+    grid-template-columns:
+      minmax(0,680px)
+      330px;
+  }
+
+}
+
+
+/* =========================================================
+   TABLET
+   ========================================================= */
+
+@media(max-width:900px){
+
+  #formView{
+    display:block;
+  }
+
+  #formView > .output-section{
+    position:relative;
+    top:auto;
+
+    margin-top:10px;
+  }
+
+  #formView .output-box{
+    max-height:400px;
+  }
+
+}
+
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media(max-width:600px){
+
+  #formView .identity-grid{
+    grid-template-columns:1fr;
+  }
+
+  #formView .pediatric-fields{
+    grid-template-columns:1fr 1fr;
+  }
+
+  #formView .vitals-grid{
+    grid-template-columns:1fr 1fr;
+  }
+
+  #formView .physical-grid{
+    grid-template-columns:1fr;
+  }
+
+  #formView .copy-grid{
+    grid-template-columns:
+      1.5fr 1fr 1fr;
+  }
+
+  #formView > .form-save-bar{
+    justify-content:stretch;
+  }
+
+  #formView > .form-save-bar button{
+    flex:1;
+  }
+
+}

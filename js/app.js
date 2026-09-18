@@ -1,255 +1,4009 @@
 const DB_NAME='ruangdokter', DB_VERSION=2, PEDIATRIC_MAX_YEARS=18;
-const DEFAULT_TEMPLATE=`Selamat [WAKTU] dokter. Izin dok dengan [NAMA_DOKTER], dokter jaga [UNIT] [RS]. Izin konsul pasien.\n\n[NAMA_PASIEN]\n[JENIS_KELAMIN]\n[USIA]\n[BB_IF_AVAILABLE]\n\nDx:\n[DIAGNOSIS]\n\nS:\n[SUBJECTIVE]\n\nO:\n[GCS_IF_AVAILABLE]\n[VITALS]\n\n[PHYSICAL_EXAM]\n\nP:\n[PLAN]\n\nMohon advice selanjutnya. Terima kasih dokter.`;
+
+const DEFAULT_TEMPLATE=`Selamat [WAKTU] dokter. Izin dok dengan [NAMA_DOKTER], dokter jaga [UNIT] [RS]. Izin konsul pasien.
+
+[NAMA_PASIEN]
+[JENIS_KELAMIN]
+[USIA]
+[BB_IF_AVAILABLE]
+
+Dx:
+[DIAGNOSIS]
+
+S:
+[SUBJECTIVE]
+
+O:
+[GCS_IF_AVAILABLE]
+[VITALS]
+
+[PHYSICAL_EXAM]
+
+P:
+[PLAN]
+
+Mohon advice selanjutnya. Terima kasih dokter.`;
+
 const DEFAULT_TEMPLATE_NAME='Konsultasi';
-const state={list:'active',patients:[],editingId:null,consultPatientId:null,consultDraft:[],detailId:null,templateId:null,activeTemplateId:null,updatePatientId:null,updateType:'vitals'};
-const $=id=>document.getElementById(id); const now=()=>new Date().toISOString(); const clean=v=>(v??'').toString().trim(); const num=v=>clean(v)===''?null:Number(v);
-function openDB(){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB_NAME,DB_VERSION);r.onupgradeneeded=()=>{const db=r.result;if(!db.objectStoreNames.contains('patients'))db.createObjectStore('patients',{keyPath:'id'});if(!db.objectStoreNames.contains('settings'))db.createObjectStore('settings',{keyPath:'key'});if(!db.objectStoreNames.contains('templates'))db.createObjectStore('templates',{keyPath:'id'});};r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});}
-async function dbPut(store,value){const db=await openDB();return new Promise((res,rej)=>{const tx=db.transaction(store,'readwrite');tx.objectStore(store).put(value);tx.oncomplete=res;tx.onerror=()=>rej(tx.error);});}
-async function dbGet(store,key){const db=await openDB();return new Promise((res,rej)=>{const tx=db.transaction(store);const r=tx.objectStore(store).get(key);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});}
-async function dbAll(store){const db=await openDB();return new Promise((res,rej)=>{const tx=db.transaction(store);const r=tx.objectStore(store).getAll();r.onsuccess=()=>res(r.result||[]);r.onerror=()=>rej(r.error);});}
-function formatDate(iso){return new Intl.DateTimeFormat('id-ID',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(iso));}
-function relativeTime(iso){const mins=Math.max(0,Math.round((Date.now()-new Date(iso))/60000));if(mins<1)return'baru saja';if(mins<60)return`${mins} menit lalu`;const h=Math.floor(mins/60);if(h<24)return`${h} jam lalu`;return formatDate(iso);}
-function greeting(){const h=new Date().getHours();return h<11?'pagi':h<15?'siang':h<18?'sore':'malam';}
-function patientGroup(y){return Number(y)<PEDIATRIC_MAX_YEARS?'pediatric':'adult';}
-function genderLabel(g){return g==='L'?'Laki-laki':g==='P'?'Perempuan':'';}
-function ageText(p){const a=p.patient.age;if(p.patient.group==='pediatric'){const x=[];if(a.years)x.push(`${a.years} tahun`);if(a.months)x.push(`${a.months} bulan`);if(a.days)x.push(`${a.days} hari`);return x.join(' ')||'0 hari';}return a.years!=null?`${a.years} tahun`:'';}
-function physicalText(p){const o=p.objective.physicalExam,lines=[];if(clean(o.head))lines.push(`Kepala: ${clean(o.head)}`);if(clean(o.thorax))lines.push(`Thorax: ${clean(o.thorax)}`);if(clean(o.abdomen))lines.push(`Abdomen: ${clean(o.abdomen)}`);if(clean(o.extremities))lines.push(`Ekstremitas: ${clean(o.extremities)}`);if(clean(o.other))lines.push(clean(o.other));return lines.join('\n');}
-function gcsText(p){const g=p.objective.gcs;return [g.e,g.v,g.m].every(x=>x!=null&&x!=='')?`GCS: E${g.e}V${g.v}M${g.m}`:'';}
-function vitalsText(p){const v=p.objective.vitals,lines=[];if(v.sbp!=null&&v.dbp!=null)lines.push(`TD: ${v.sbp}/${v.dbp}`);if(v.hr!=null)lines.push(`HR: ${v.hr}`);if(v.rr!=null)lines.push(`RR: ${v.rr}`);if(v.temperature!=null)lines.push(`T: ${v.temperature}`);if(v.spo2!=null){let ox=v.oxygen||'Room air';if(ox!=='Room air'&&v.oxygenFlow!=null)ox+=` ${v.oxygenFlow} L/menit`;lines.push(`SpO₂: ${v.spo2}% ${ox}`);} return lines.join('\n');}
-function mapOf(p){const v=p.objective.vitals;return v.sbp!=null&&v.dbp!=null?Math.round((v.sbp+2*v.dbp)/3):null;}
-function shockIndex(p){const v=p.objective.vitals;return v.hr!=null&&v.sbp?Math.round((v.hr/v.sbp)*100)/100:null;}
-function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));}
-async function profile(){return(await dbGet('settings','profile'))?.value||{doctor:'',hospital:'',unit:''};}
-function smartClean(t){return t.replace(/\n{3,}/g,'\n\n').split('\n').map(x=>x.trimEnd()).join('\n').trim();}
-async function renderTemplate(body,p){const pr=await profile();let t=body;const r=(a,b)=>t=t.split(a).join(b??'');r('[WAKTU]',greeting());r('[NAMA_DOKTER]',pr.doctor);r('[UNIT]',pr.unit);r('[RS]',pr.hospital);r('[NAMA_PASIEN]',p.patient.name);r('[JENIS_KELAMIN]',genderLabel(p.patient.gender));r('[USIA]',ageText(p));r('[BB_IF_AVAILABLE]',p.patient.group==='pediatric'&&p.patient.weight!=null?`BB: ${p.patient.weight} kg`:'');r('[DIAGNOSIS]',p.diagnosis.length?p.diagnosis.join('\n'):clean(p.assessment));r('[SUBJECTIVE]',p.subjective);r('[GCS_IF_AVAILABLE]',gcsText(p));r('[VITALS]',vitalsText(p));r('[PHYSICAL_EXAM]',physicalText(p));r('[ASSESSMENT]',p.assessment);r('[PLAN]',p.plan);r('[MAP_IF_AVAILABLE]',mapOf(p)!=null?`MAP: ${mapOf(p)} mmHg`:'');r('[SHOCK_INDEX_IF_AVAILABLE]',shockIndex(p)!=null?`Shock Index: ${shockIndex(p)}`:'');return smartClean(t);}
-async function buildConsultation(p,templateId=null){
-  const templates=await dbAll('templates');
-  const selectedId=templateId||p.templateId||state.activeTemplateId;
-  const selected=templates.find(t=>t.id===selectedId)||templates.find(t=>t.system)||templates[0];
-  if(selected) state.activeTemplateId=selected.id;
-  return renderTemplate(selected?.body||DEFAULT_TEMPLATE,p);
-}
-function sectionText(p,s){if(s==='s')return clean(p.subjective||'');if(s==='a')return clean(p.assessment||'');if(s==='p')return clean(p.plan||'');if(s==='o')return[gcsText(p),vitalsText(p),physicalText(p)].filter(Boolean).join('\n');return buildConsultation(p);}
-function emptyPatient(){return{id:crypto.randomUUID(),createdAt:now(),updatedAt:now(),status:'active',templateId:null,patient:{name:'',gender:'',group:'adult',age:{years:null,months:null,days:null},weight:null},diagnosis:[],subjective:'',objective:{gcs:{e:null,v:null,m:null},vitals:{sbp:null,dbp:null,hr:null,rr:null,temperature:null,spo2:null,oxygen:'Room air',oxygenFlow:null},physicalExam:{head:'CA -/-, SI -/-',thorax:'ves +/+, rh -/-, wh -/-. BJ reg, m -, g -.',abdomen:'supel, BU +',extremities:'akral hangat, CRT <2s',other:''}},assessment:'',plan:'',consultations:[],timeline:[]};}
-function readForm(existing){const p=existing||emptyPatient();const years=num($('ageYears').value)??0,g=patientGroup(years);p.updatedAt=now();p.templateId=$('formTemplateSelect')?.value||p.templateId||null;p.patient={...p.patient,name:clean($('patientName').value),gender:$('gender').value,group:g,age:{years,months:g==='pediatric'?num($('ageMonths').value)||0:0,days:g==='pediatric'?num($('ageDays').value)||0:0},weight:g==='pediatric'?num($('weight').value):null};p.diagnosis=clean($('diagnosis').value).split(/\n+/).map(x=>x.trim()).filter(Boolean);p.subjective=clean($('subjective').value);p.objective={gcs:{e:num($('gcsE').value),v:num($('gcsV').value),m:num($('gcsM').value)},vitals:{sbp:num($('sbp').value),dbp:num($('dbp').value),hr:num($('hr').value),rr:num($('rr').value),temperature:num($('temperature').value),spo2:num($('spo2').value),oxygen:$('oxygen').value,oxygenFlow:num($('oxygenFlow').value)},physicalExam:{head:clean($('headExam').value),thorax:clean($('thoraxExam').value),abdomen:clean($('abdomenExam').value),extremities:clean($('extremityExam').value),other:clean($('otherExam').value)}};p.assessment=clean($('assessment').value);p.plan=clean($('plan').value);return p;}
-function fillForm(p){$('patientId').value=p.id;$('formTitle').textContent='Edit Pasien';
-$('formTemplateSelect').value=p.templateId||state.activeTemplateId||'';$('patientName').value=p.patient.name;$('gender').value=p.patient.gender;$('ageYears').value=p.patient.age.years??'';$('ageMonths').value=p.patient.age.months||'';$('ageDays').value=p.patient.age.days||'';$('weight').value=p.patient.weight??'';$('diagnosis').value=p.diagnosis.join('\n');$('subjective').value=p.subjective;$('gcsE').value=p.objective.gcs.e??'';$('gcsV').value=p.objective.gcs.v??'';$('gcsM').value=p.objective.gcs.m??'';const v=p.objective.vitals;$('sbp').value=v.sbp??'';$('dbp').value=v.dbp??'';$('hr').value=v.hr??'';$('rr').value=v.rr??'';$('temperature').value=v.temperature??'';$('spo2').value=v.spo2??'';$('oxygen').value=v.oxygen||'Room air';$('oxygenFlow').value=v.oxygenFlow??'';updateOxygenFlow();const o=p.objective.physicalExam;$('headExam').value=o.head||'';$('thoraxExam').value=o.thorax||'';$('abdomenExam').value=o.abdomen||'';$('extremityExam').value=o.extremities||'';$('otherExam').value=o.other||'';$('assessment').value=p.assessment;$('plan').value=p.plan;updatePediatricFields();updatePreview();}
-function updatePediatricFields(){const y=num($('ageYears').value);const show=y!==null&&y<PEDIATRIC_MAX_YEARS;$('pediatricFields').hidden=!show;if(!show){$('ageMonths').value='';$('ageDays').value='';$('weight').value='';}}
-function updateOxygenFlow(){const show=$('oxygen').value!=='Room air';$('oxygenFlowWrap').hidden=!show;if(!show)$('oxygenFlow').value='';}
-const physicalOptions={
-  head:[
-    {label:'Konjungtiva anemis',value:'CA +/+',normal:'CA -/-',replace:['CA -/-','CA +/+']},
-    {label:'Sklera ikterik',value:'SI +/+',normal:'SI -/-',replace:['SI -/-','SI +/+']},
-    {label:'Sianosis',value:'sianosis +',append:true},
-    {label:'Edema palpebra',value:'edema palpebra +',append:true},
-    {label:'Pupil anisokor',value:'pupil anisokor',append:true}
-  ],
-  thorax:[
-    {label:'Vesikuler menurun bilateral',value:'ves -/-',normal:'ves +/+',replace:['ves +/+','ves -/-']},
-    {label:'Ronki bilateral',value:'rh +/+',normal:'rh -/-',replace:['rh -/-','rh +/+']},
-    {label:'Wheezing bilateral',value:'wh +/+',normal:'wh -/-',replace:['wh -/-','wh +/+']},
-    {label:'BJ ireguler',value:'BJ ireg',normal:'BJ reg',replace:['BJ reg','BJ ireg']},
-    {label:'Murmur',value:'m +',normal:'m -',replace:['m -','m +']},
-    {label:'Gallop',value:'g +',normal:'g -',replace:['g -','g +']},
-    {label:'Retraksi',value:'retraksi +',append:true}
-  ],
-  abdomen:[
-    {label:'Distensi',value:'distensi',normal:'supel',replace:['supel','distensi']},
-    {label:'Nyeri tekan',value:'NT +',append:true},
-    {label:'Defans muscular',value:'defans +',append:true},
-    {label:'BU menurun/tidak terdengar',value:'BU -',normal:'BU +',replace:['BU +','BU -']},
-    {label:'Hepatomegali',value:'hepatomegali +',append:true},
-    {label:'Splenomegali',value:'splenomegali +',append:true},
-    {label:'Ascites',value:'asites +',append:true}
-  ],
-  extremities:[
-    {label:'Akral dingin',value:'akral dingin',normal:'akral hangat',replace:['akral hangat','akral dingin']},
-    {label:'CRT >2 detik',value:'CRT >2s',normal:'CRT <2s',replace:['CRT <2s','CRT >2s']},
-    {label:'Edema bilateral',value:'edema +/+',append:true},
-    {label:'Sianosis',value:'sianosis +',append:true},
-    {label:'Clubbing',value:'clubbing +',append:true},
-    {label:'Nyeri tekan',value:'nyeri tekan +',append:true}
-  ]
+
+const state={
+  list:'active',
+  patients:[],
+  editingId:null,
+  consultPatientId:null,
+  consultDraft:[],
+  detailId:null,
+  templateId:null,
+  activeTemplateId:null,
+  updatePatientId:null,
+  updateType:'vitals'
 };
-let physicalSection='head';
-function openPhysicalHelper(){renderPhysicalOptions();$('physicalModal').hidden=false;}
-function physicalInputId(){return physicalSection==='extremities'?'extremityExam':physicalSection+'Exam';}
-function physicalCurrent(){return $(physicalInputId()).value.trim();}
-function findingSelected(finding,current){return current.includes(finding.value);}
-function renderPhysicalOptions(){
-  const map={head:'Kepala & Mata',thorax:'Thorax',abdomen:'Abdomen',extremities:'Ekstremitas'};
-  $('physicalSectionTabs').innerHTML=Object.keys(map).map(k=>`<button type="button" class="segment ${physicalSection===k?'active':''}" data-physical-section="${k}">${map[k]}</button>`).join('');
-  const current=physicalCurrent();
-  const opts=physicalOptions[physicalSection]||[];
-  $('physicalOptions').innerHTML=opts.map((f,i)=>`<button type="button" class="finding-chip ${findingSelected(f,current)?'selected':''}" data-finding-index="${i}">${f.label}<small>${esc(f.value)}</small></button>`).join('');
-  const note=document.querySelector('.physical-helper-note'); if(note) note.remove(); $('physicalOptions').insertAdjacentHTML('beforebegin',`<p class="helper physical-helper-note">Klik temuan untuk mengubah pemeriksaan. Klik lagi untuk mengembalikan nilai normal atau menghapus temuan.</p>`);
-}
-function removeFindingClause(text,value){
-  return text.split(',').map(x=>x.trim()).filter(x=>x && x!==value).join(', ');
-}
-function applyPhysicalFinding(index){
-  const f=physicalOptions[physicalSection]?.[Number(index)]; if(!f)return;
-  const el=$(physicalInputId()); let text=el.value.trim();
-  if(f.replace){
-    if(text.includes(f.value)){
-      el.value=text.replace(f.value,f.normal||f.replace[0]);
-    }else{
-      const normal=f.normal||f.replace[0];
-      if(text.includes(normal)) el.value=text.replace(normal,f.value);
-      else if(!text) el.value=f.value;
-      else el.value=text.replace(/[.]$/,'')+', '+f.value;
-    }
-  }else if(f.append){
-    if(text.includes(f.value)) el.value=removeFindingClause(text,f.value);
-    else if(!text) el.value=f.value;
-    else el.value=text.replace(/[.]$/,'')+', '+f.value;
-  }
-  updatePreview();
-}
-function ewsScore(p){const v=p.objective.vitals,g=p.objective.gcs;const rr=v.rr,sp=v.spo2,hr=v.hr,t=v.temperature;const vals=[rr,sp,hr,t];if(vals.some(x=>x==null||Number.isNaN(x)))return null;let score=0;if(rr>=25)score+=3;else if(rr>=21)score+=2;else if(rr>=12)score+=0;else if(rr>=9)score+=1;else score+=3;if(sp<=91)score+=3;else if(sp<=93)score+=2;else if(sp<=95)score+=1;if(hr<=40)score+=3;else if(hr<=50)score+=1;else if(hr<=90)score+=0;else if(hr<=110)score+=1;else if(hr<=130)score+=2;else score+=3;if(t<=35)score+=3;else if(t<=36)score+=1;else if(t<=38)score+=0;else if(t<=39)score+=1;else score+=2;const gcsTotal=[g.e,g.v,g.m].every(x=>x!=null)?g.e+g.v+g.m:15;if(gcsTotal<15)score+=3;return score;}
-function ewsLabel(score){if(score>=7)return'Kritis';if(score>=5)return'Perhatian';return'Normal';}
-function clinicalAutoText(p){const v=p.objective.vitals,parts=[];const map=mapOf(p),si=shockIndex(p),ews=ewsScore(p);if(map!=null)parts.push(`<div><b>${map}</b><small>MAP</small></div>`);if(si!=null)parts.push(`<div><b>${si}</b><small>Shock Index</small></div>`);if(ews!=null)parts.push(`<div><b>${ews}</b><small>EWS · ${ewsLabel(ews)}</small></div>`);return parts.join('');}
-function renderClinicalAutoTools(p){
-  const box=$('clinicalAutoTools'); if(!box)return;
-  const v=p.objective.vitals;
-  const hasAny=[v.sbp,v.dbp,v.hr,v.rr,v.temperature,v.spo2].some(x=>x!=null);
-  if(!hasAny){box.hidden=true;box.innerHTML='';return;}
-  const map=mapOf(p),si=shockIndex(p),ews=ewsScore(p);
-  box.hidden=false;
-  box.innerHTML=`<div class="auto-tools-head"><div><span class="eyebrow">Otomatis</span><strong>Clinical tools</strong></div><small>Mengikuti TTV yang diinput</small></div><div class="auto-tools-grid"><div class="auto-tool"><b>${map!=null?map:'—'}</b><small>MAP</small></div><div class="auto-tool"><b>${si!=null?si:'—'}</b><small>Shock Index</small></div><div class="auto-tool"><b>${ews!=null?ews:'—'}</b><small>EWS${ews!=null?' · '+ewsLabel(ews):''}</small></div></div>`;
-}
-async function updatePreview(){const p=readForm(state.editingId?state.patients.find(x=>x.id===state.editingId):null);renderClinicalAutoTools(p);if(!$('patientName').value.trim()){$('formPreview').textContent='Isi identitas pasien untuk melihat preview.';return;}$('formPreview').textContent=await buildConsultation(p);}
-function showView(name){['patients','form','detail','tools','templates'].forEach(v=>$(v+'View').hidden=v!==name);document.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.nav===name||name==='detail'&&b.dataset.nav==='patients'));window.scrollTo({top:0,behavior:'instant'});}
-function openNew(){state.editingId=null;$('patientForm').reset();$('patientId').value='';$('formTemplateSelect').value=state.activeTemplateId||'';$('formTitle').textContent='Pasien Baru';$('oxygen').value='Room air';$('oxygenFlow').value='';updateOxygenFlow();$('headExam').value='CA -/-, SI -/-';$('thoraxExam').value='ves +/+, rh -/-, wh -/-. BJ reg, m -, g -.';$('abdomenExam').value='supel, BU +';$('extremityExam').value='akral hangat, CRT <2s';updatePediatricFields();updatePreview();showView('form');}
-function openEdit(id){const p=state.patients.find(x=>x.id===id);if(!p)return;state.editingId=id;fillForm(p);showView('form');}
-async function saveForm(){const existing=state.editingId?state.patients.find(x=>x.id===state.editingId):null;const p=readForm(existing);if(!p.patient.name||!p.patient.gender){toast('Lengkapi nama dan jenis kelamin.');return;}if(!existing&&!p.timeline.length)p.timeline.push({id:crypto.randomUUID(),type:'created',at:p.createdAt,summary:'Pasien dibuat dan masuk daftar aktif'});await dbPut('patients',p);await refreshPatients();toast(existing?'Pasien diperbarui':'Pasien disimpan');showView('patients');}
-function consultSummary(p){if(!p.consultations?.length)return'Belum ada';return p.consultations.map(c=>`${c.specialty} ${c.contacted?'✓':'⏳'}${c.adviceReceived?' · advice ✓':''}`).join(' • ');}
-function renderList(){
-  const q=clean($('patientSearch').value).toLowerCase();
-  const status=state.list==='archive'?'completed':'active';
-  let rows=state.patients.filter(p=>p.status===status);
-  rows.sort((a,b)=>new Date(b.createdAt||b.updatedAt)-new Date(a.createdAt||a.updatedAt));
-  if(q)rows=rows.filter(p=>(p.patient.name+' '+p.diagnosis.join(' ')).toLowerCase().includes(q));
-  $('activeCount').textContent=state.patients.filter(p=>p.status==='active').length;
-  $('archiveCount').textContent=state.patients.filter(p=>p.status==='completed').length;
-  const c=$('patientList');
-  if(!rows.length){c.innerHTML=`<div class="empty"><strong>${state.list==='active'?'Belum ada pasien aktif':'Arsip masih kosong'}</strong>${state.list==='active'?'Klik “Pasien Baru” untuk mulai.':'Pasien yang selesai akan muncul di sini.'}</div>`;return;}
-  c.innerHTML=rows.map(p=>{
-    const done=p.status==='completed';
-    const created=p.createdAt||p.updatedAt;
-    return `<article class="patient-card" data-open-patient="${p.id}">
-      <div class="patient-main"><div><div class="patient-name">${esc(p.patient.name)}</div><div class="patient-meta">${esc(ageText(p))}${p.patient.gender?' • '+esc(p.patient.gender):''}${p.patient.group==='pediatric'&&p.patient.weight!=null?' • BB '+esc(p.patient.weight)+' kg':''}</div><div class="diagnosis">${esc(p.diagnosis.join(' • ')||'Belum ada diagnosis')}</div></div><span class="status-badge ${done?'done':''}">${done?'Selesai':'Belum selesai'}</span></div>
-      <div class="consult-line">Konsul: <strong>${esc(consultSummary(p))}</strong></div>
-      <div class="patient-actions">${done?`<button class="secondary-btn" data-action="edit" data-id="${p.id}">Buka</button>`:`<button class="secondary-btn" data-action="copy" data-id="${p.id}">Copy Konsul</button><button class="secondary-btn" data-action="consult" data-id="${p.id}">＋ Konsul</button><button class="primary-btn" data-action="done" data-id="${p.id}">Selesai</button>`}${done?`<button class="secondary-btn" data-action="copy" data-id="${p.id}">Copy Konsul</button>`:''}</div>
-      <div class="time-row"><span>Input: ${formatDate(created)}</span><span>Update: ${relativeTime(p.updatedAt)}</span></div>
-    </article>`;
-  }).join('');
-}
-async function copyText(text,msg='Tersalin'){try{await navigator.clipboard.writeText(text);toast(msg);}catch{toast('Clipboard tidak tersedia.');}}
-async function copyPatient(id,section='all'){const p=state.patients.find(x=>x.id===id);if(!p)return;await copyText(await sectionText(p,section),section==='all'?'Format konsultasi tersalin':'Bagian tersalin');}
-async function setPatientTemplate(id,templateId){const p=state.patients.find(x=>x.id===id);if(!p)return;p.templateId=templateId||null;p.updatedAt=now();await dbPut('patients',p);if(state.detailId===id)renderDetail(p);await refreshPatients();toast('Template pasien diperbarui');}
-function openConsult(id){const p=state.patients.find(x=>x.id===id);if(!p)return;state.consultPatientId=id;state.consultDraft=(p.consultations||[]).map(c=>({...c}));renderConsultRows();$('consultModal').hidden=false;}
-const specialties=[['Penyakit Dalam','SpPD'],['Anak','SpA'],['Jantung dan Pembuluh Darah','SpJP'],['Bedah','SpB'],['Obstetri dan Ginekologi','SpOG'],['Neurologi','SpN'],['Anestesiologi','SpAn'],['Mata','SpM'],['Telinga Hidung Tenggorok - Bedah Kepala Leher','SpTHT-KL'],['Dermatologi dan Venereologi','SpDV'],['Orthopaedi dan Traumatologi','SpOT'],['Urologi','SpU'],['Pulmonologi dan Kedokteran Respirasi','SpP'],['Psikiatri','SpKJ'],['Radiologi','SpRad']];
-const specialtyMap=Object.fromEntries(specialties.map(x=>[x[1],x[0]]));
-function specialtyLabel(code){return specialtyMap[code]||code;}
-function renderConsultRows(){const c=$('consultRows');c.innerHTML=state.consultDraft.map((x,i)=>`<div class="consult-row"><div class="row-between"><select class="consult-select" data-consult-specialty data-index="${i}">${specialties.map(([label,code])=>`<option value="${code}" ${x.specialty===code?'selected':''}>${label} (${code})</option>`).join('')}</select><button class="text-btn" data-remove-consult="${i}">Hapus</button></div><div class="toggle-row"><button class="toggle ${x.contacted?'selected':''}" data-consult-field="contacted" data-index="${i}">${x.contacted?'✓ ':''}Sudah dihubungi</button><button class="toggle ${x.adviceReceived?'selected':''}" data-consult-field="adviceReceived" data-index="${i}">${x.adviceReceived?'✓ ':''}Advice sudah ada</button></div></div>`).join('')||'<div class="empty">Belum ada spesialis. Tambahkan satu.</div>'; }
-function addConsult(){const used=state.consultDraft.map(x=>x.specialty);const specialty=(specialties.find(x=>!used.includes(x[1]))||specialties[0])[1];state.consultDraft.push({id:crypto.randomUUID(),specialty,contacted:false,adviceReceived:false,createdAt:now(),updatedAt:now()});renderConsultRows();}
-async function saveConsult(){const p=state.patients.find(x=>x.id===state.consultPatientId);if(!p)return;p.consultations=state.consultDraft;p.updatedAt=now();p.timeline=p.timeline||[];p.timeline.push({type:'consultation',at:now(),summary:p.consultations.map(c=>`${c.specialty}: ${c.contacted?'dihubungi':'belum'}${c.adviceReceived?', advice ada':''}`).join(' | ')});await dbPut('patients',p);await refreshPatients();$('consultModal').hidden=true;if(state.detailId===p.id)renderDetail(p);toast('Status konsultasi disimpan');}
-function openUpdate(id,type='vitals'){const p=state.patients.find(x=>x.id===id);if(!p)return;state.updatePatientId=id;state.updateType=type;renderUpdateFields();$('updateModal').hidden=false;}
-function updateVitalsFields(v){return `<div class="update-grid"><div class="field"><label>TD</label><div class="bp-input"><input id="uSbp" type="number" inputmode="numeric" placeholder="SBP" value="${v.sbp??''}"><span>/</span><input id="uDbp" type="number" inputmode="numeric" placeholder="DBP" value="${v.dbp??''}"></div></div><div class="field"><label>HR (/min)</label><input id="uHr" type="number" inputmode="numeric" value="${v.hr??''}"></div><div class="field"><label>RR (/min)</label><input id="uRr" type="number" inputmode="numeric" value="${v.rr??''}"></div><div class="field"><label>T (°C)</label><input id="uTemp" type="number" step="0.1" inputmode="decimal" value="${v.temperature??''}"></div><div class="field"><label>SpO₂ (%)</label><input id="uSpo2" type="number" min="0" max="100" inputmode="numeric" value="${v.spo2??''}"></div><div class="field"><label>O₂</label><select id="uOxygen"><option value="Room air">Room air</option><option value="Nasal cannula">Nasal cannula</option><option value="Simple mask">Simple mask</option><option value="NRM">NRM</option><option value="HFNC">HFNC</option><option value="Lainnya">Lainnya</option></select></div><div class="field" id="uOxygenFlowWrap" hidden><label>Flow O₂ (L/menit)</label><input id="uOxygenFlow" type="number" min="0" step="0.1" inputmode="decimal" value="${v.oxygenFlow??''}"></div></div><div class="subheading">GCS</div><div class="three-col gcs-grid"><div class="field"><label>E</label><input id="uGcsE" type="number" min="1" max="4" value="${pUpdate().objective.gcs.e??''}"></div><div class="field"><label>V</label><input id="uGcsV" type="number" min="1" max="5" value="${pUpdate().objective.gcs.v??''}"></div><div class="field"><label>M</label><input id="uGcsM" type="number" min="1" max="6" value="${pUpdate().objective.gcs.m??''}"></div></div><p class="helper">Isi hanya data yang ingin diperbarui. Nilai lama akan dipertahankan bila dikosongkan.</p>`;}
-function pUpdate(){return state.patients.find(x=>x.id===state.updatePatientId)||emptyPatient();}
-function renderUpdateFields(){const p=pUpdate();document.querySelectorAll('.update-tab').forEach(b=>b.classList.toggle('active',b.dataset.updateType===state.updateType));if(state.updateType==='vitals'){$('updateFields').innerHTML=updateVitalsFields(p.objective.vitals);$('uOxygen').value=p.objective.vitals.oxygen||'Room air';updateUpdateOxygen();$('uOxygen').onchange=updateUpdateOxygen;return;}const map={assessment:['Assessment baru','assessment','Isi assessment terbaru...'],plan:['Terapi / Plan baru','plan','Isi terapi atau rencana terbaru...'],lab:['Hasil lab / penunjang','lab','Contoh: Hb 9.2, Leukosit 14.000, CXR ...'],note:['Catatan','note','Catatan tambahan...']};const [label,id,ph]=map[state.updateType];const current=state.updateType==='assessment'?p.assessment:state.updateType==='plan'?p.plan:'';$('updateFields').innerHTML=`<div class="field"><label for="updateText">${label}</label><textarea id="updateText" rows="7" placeholder="${ph}">${esc(current)}</textarea></div><p class="helper">Update ini akan masuk ke timeline pasien.</p>`;}
-function updateUpdateOxygen(){const show=$('uOxygen')?.value!=='Room air';if($('uOxygenFlowWrap'))$('uOxygenFlowWrap').hidden=!show;if(!show&&$('uOxygenFlow'))$('uOxygenFlow').value='';}
-async function saveUpdate(){const p=pUpdate();if(!p.id)return;const at=now();p.timeline=p.timeline||[];let summary='';if(state.updateType==='vitals'){const v=p.objective.vitals;const pairs=[['sbp','uSbp'],['dbp','uDbp'],['hr','uHr'],['rr','uRr'],['temperature','uTemp'],['spo2','uSpo2']];pairs.forEach(([key,id])=>{const value=num($(id)?.value);if(value!=null)v[key]=value;});const oxygen=$('uOxygen')?.value;if(oxygen){v.oxygen=oxygen;v.oxygenFlow=oxygen==='Room air'?null:num($('uOxygenFlow')?.value);}const g=p.objective.gcs;[['e','uGcsE'],['v','uGcsV'],['m','uGcsM']].forEach(([key,id])=>{const value=num($(id)?.value);if(value!=null)g[key]=value;});summary=vitalsText(p)+(gcsText(p)?`\n${gcsText(p)}`:'');if(!summary)summary='Tidak ada perubahan data TTV.';}
-else if(state.updateType==='assessment'){const value=clean($('updateText').value);if(!value){toast('Assessment belum diisi.');return;}p.assessment=value;summary=value;}
-else if(state.updateType==='plan'){const value=clean($('updateText').value);if(!value){toast('Terapi / plan belum diisi.');return;}p.plan=value;summary=value;}
-else if(state.updateType==='lab'){const value=clean($('updateText').value);if(!value){toast('Hasil lab / penunjang belum diisi.');return;}summary=value;}
-else {const value=clean($('updateText').value);if(!value){toast('Catatan belum diisi.');return;}summary=value;}
-const labels={vitals:'TTV diperbarui',assessment:'Assessment diperbarui',plan:'Terapi / plan diperbarui',lab:'Lab / penunjang diperbarui',note:'Catatan ditambahkan'};p.timeline.push({id:crypto.randomUUID(),type:'update',subtype:state.updateType,at,summary});p.updatedAt=at;await dbPut('patients',p);await refreshPatients();$('updateModal').hidden=true;if(state.detailId===p.id)renderDetail(p);toast(labels[state.updateType]);}
-async function completePatient(id){const p=state.patients.find(x=>x.id===id);if(!p)return;if(!confirm(`Selesaikan pasien ${p.patient.name}? Pasien akan masuk Arsip.`))return;p.status='completed';p.updatedAt=now();p.timeline=p.timeline||[];p.timeline.push({type:'completed',at:now(),summary:'Pasien dipindahkan ke arsip'});await dbPut('patients',p);await refreshPatients();toast('Pasien masuk Arsip');}
-function openDetail(id){const p=state.patients.find(x=>x.id===id);if(!p)return;state.detailId=id;$('detailTitle').textContent=p.patient.name;renderDetail(p);showView('detail');}
-function renderDetail(p){
-  $('detailTitle').textContent=p.patient.name;
-  const map=mapOf(p),si=shockIndex(p);
-  const snapshot=[
-    map!=null?`<div><b>${map}</b><small>MAP (mmHg)</small></div>`:'',
-    si!=null?`<div><b>${si}</b><small>Shock Index</small></div>`:''
-  ].filter(Boolean).join('');
-  const tl=(p.timeline||[]).slice().sort((a,b)=>new Date(b.at)-new Date(a.at)).map(e=>{
-    const updateLabels={vitals:'TTV diperbarui',assessment:'Assessment diperbarui',plan:'Terapi / plan diperbarui',lab:'Lab / penunjang diperbarui',note:'Catatan ditambahkan'};
-    const title=e.type==='consultation'?'Konsultasi':e.type==='completed'?'Selesai':e.type==='created'?'Pasien dibuat':updateLabels[e.subtype]||'Update';
-    return `<div class="timeline-item"><div class="timeline-dot"></div><div><strong>${esc(title)}</strong><small>${formatDate(e.at)}</small><p>${esc(e.summary||'')}</p></div></div>`;
-  }).join('');
-  $('detailContent').innerHTML=`
-    <div class="detail-head">
-      <div><div class="patient-meta">${esc(ageText(p))} • ${esc(genderLabel(p.patient.gender))}</div><div class="diagnosis">${esc(p.diagnosis.join(' • '))}</div></div>
-      <span class="status-badge ${p.status==='completed'?'done':''}">${p.status==='completed'?'Selesai':'Aktif'}</span>
-    </div>
-    <div class="detail-actions">
-      <button class="secondary-btn" id="detailEditBtn">Edit</button>
-      <button class="secondary-btn" id="detailUpdateBtn">＋ Update</button>
-      <button class="secondary-btn" id="detailConsultBtn">＋ Konsul</button>
-      ${p.status==='active'?'<button class="primary-btn" id="detailDoneBtn">Selesai</button>':''}
-    </div>
-    <div class="detail-section template-choice"><div class="row-between"><div><p class="eyebrow">Output</p><h2>Template konsultasi</h2></div><select id="detailTemplateSelect" class="consult-select"></select></div></div>
-    <div class="snapshot">
-      <div><b>${p.objective.vitals.sbp!=null&&p.objective.vitals.dbp!=null?`${p.objective.vitals.sbp}/${p.objective.vitals.dbp}`:'—'}</b><small>TD</small></div>
-      <div><b>${p.objective.vitals.hr??'—'}</b><small>HR</small></div>
-      <div><b>${p.objective.vitals.rr??'—'}</b><small>RR</small></div>
-      <div><b>${p.objective.vitals.spo2!=null?p.objective.vitals.spo2+'%':'—'}</b><small>SpO₂</small></div>
-    </div>
-    ${snapshot?`<div class="clinical-snapshot"><div class="subheading">Clinical Snapshot</div>${snapshot}</div>`:''}
-    <section class="detail-section"><div class="row-between"><h2>SOAP</h2><button class="secondary-btn" id="detailCopyAll">Copy All</button></div><pre class="output-box">${esc(['S:',p.subjective,'','O:',gcsText(p),vitalsText(p),physicalText(p),'','A:',p.assessment,'','P:',p.plan].filter((x,i)=>x||i===0).join('\n'))}</pre><div class="copy-grid detail-copy-grid"><button type="button" data-detail-copy="s" class="secondary-btn">Copy S</button><button type="button" data-detail-copy="o" class="secondary-btn">Copy O</button><button type="button" data-detail-copy="a" class="secondary-btn">Copy A</button><button type="button" data-detail-copy="p" class="secondary-btn">Copy P</button></div></section>
-    <section class="detail-section"><div class="row-between"><h2>Konsultasi</h2></div><div class="consult-detail">${p.consultations?.length?p.consultations.map(c=>`<div><strong>${esc(specialtyLabel(c.specialty))} <small>(${esc(c.specialty)})</small></strong><span>${c.contacted?'✓ Dihubungi':'⏳ Belum dihubungi'} · ${c.adviceReceived?'✓ Advice ada':'⏳ Advice belum ada'}</span></div>`).join(''):'Belum ada konsultasi tercatat.'}</div></section>
-    <section class="detail-section"><h2>Timeline</h2><div class="timeline">${tl||'<div class="empty">Belum ada event tambahan.</div>'}</div></section>`;
-  $('detailUpdateBtn').onclick=()=>openUpdate(p.id);
-  $('detailEditBtn').onclick=()=>openEdit(p.id);
-  $('detailConsultBtn').onclick=()=>openConsult(p.id);
-  $('detailDoneBtn')?.addEventListener('click',()=>completePatient(p.id));
-  $('detailCopyAll').onclick=()=>copyPatient(p.id);document.querySelectorAll('[data-detail-copy]').forEach(b=>b.onclick=()=>copyPatient(p.id,b.dataset.detailCopy));
-  populateTemplateSelects().then(()=>{const ds=$('detailTemplateSelect');if(!ds)return;const list=document.querySelectorAll('#formTemplateSelect option');ds.innerHTML=[...list].map(o=>o.outerHTML).join('');ds.value=p.templateId||state.activeTemplateId||'';ds.onchange=()=>setPatientTemplate(p.id,ds.value);});
-}
-const calculatorDefs=[
-  {id:'map',cat:'Hemodinamik',name:'MAP',desc:'Mean arterial pressure',html:()=>`<div class="calc-grid"><div class="field"><label>SBP (mmHg)</label><input id="cMapSbp" type="number"></div><div class="field"><label>DBP (mmHg)</label><input id="cMapDbp" type="number"></div></div><div id="cMapResult" class="calc-result">Masukkan SBP dan DBP.</div>`,bind:()=>{const run=()=>{const a=num($('cMapSbp')?.value),b=num($('cMapDbp')?.value);$('cMapResult').textContent=a!=null&&b!=null?`MAP: ${Math.round((a+2*b)/3)} mmHg`:'Masukkan SBP dan DBP.'};['cMapSbp','cMapDbp'].forEach(id=>$(id)?.addEventListener('input',run));}},
-  {id:'shock',cat:'Hemodinamik',name:'Shock Index',desc:'HR / SBP',html:()=>`<div class="calc-grid"><div class="field"><label>HR (/min)</label><input id="cSiHr" type="number"></div><div class="field"><label>SBP (mmHg)</label><input id="cSiSbp" type="number"></div></div><div id="cSiResult" class="calc-result">Masukkan HR dan SBP.</div>`,bind:()=>{const run=()=>{const hr=num($('cSiHr')?.value),sbp=num($('cSiSbp')?.value);$('cSiResult').textContent=hr!=null&&sbp>0?`Shock Index: ${Math.round(hr/sbp*100)/100}`:'Masukkan HR dan SBP.'};['cSiHr','cSiSbp'].forEach(id=>$(id)?.addEventListener('input',run));}},
-  {id:'bmi',cat:'Antropometri',name:'BMI',desc:'Berat badan / tinggi badan',html:()=>`<div class="calc-grid"><div class="field"><label>BB (kg)</label><input id="cBmiW" type="number" step="0.1"></div><div class="field"><label>TB (cm)</label><input id="cBmiH" type="number" step="0.1"></div></div><div id="cBmiResult" class="calc-result">Masukkan BB dan TB.</div>`,bind:()=>{const run=()=>{const w=num($('cBmiW')?.value),h=num($('cBmiH')?.value);$('cBmiResult').textContent=w!=null&&h>0?`BMI: ${(w/((h/100)**2)).toFixed(1)}`:'Masukkan BB dan TB.'};['cBmiW','cBmiH'].forEach(id=>$(id)?.addEventListener('input',run));}},
-  {id:'bsa',cat:'Antropometri',name:'BSA',desc:'Body surface area (Mosteller)',html:()=>`<div class="calc-grid"><div class="field"><label>BB (kg)</label><input id="cBsaW" type="number" step="0.1"></div><div class="field"><label>TB (cm)</label><input id="cBsaH" type="number" step="0.1"></div></div><div id="cBsaResult" class="calc-result">Masukkan BB dan TB.</div>`,bind:()=>{const run=()=>{const w=num($('cBsaW')?.value),h=num($('cBsaH')?.value);$('cBsaResult').textContent=w!=null&&h>0?`BSA: ${Math.sqrt(w*h/3600).toFixed(2)} m²`:'Masukkan BB dan TB.'};['cBsaW','cBsaH'].forEach(id=>$(id)?.addEventListener('input',run));}},
-  {id:'anion',cat:'Elektrolit',name:'Anion Gap',desc:'Na − (Cl + HCO₃)',html:()=>`<div class="calc-grid"><div class="field"><label>Na</label><input id="cAgNa" type="number"></div><div class="field"><label>Cl</label><input id="cAgCl" type="number"></div><div class="field"><label>HCO₃</label><input id="cAgHco" type="number"></div></div><div id="cAgResult" class="calc-result">Masukkan Na, Cl, dan HCO₃.</div>`,bind:()=>{const run=()=>{const na=num($('cAgNa')?.value),cl=num($('cAgCl')?.value),h=num($('cAgHco')?.value);$('cAgResult').textContent=na!=null&&cl!=null&&h!=null?`Anion Gap: ${na-(cl+h)} mEq/L`:'Masukkan Na, Cl, dan HCO₃.'};['cAgNa','cAgCl','cAgHco'].forEach(id=>$(id)?.addEventListener('input',run));}},
-  {id:'corrected-na',cat:'Elektrolit',name:'Corrected Sodium',desc:'Koreksi Na terhadap hiperglikemia',html:()=>`<div class="calc-grid"><div class="field"><label>Na (mEq/L)</label><input id="cNa" type="number"></div><div class="field"><label>Glukosa (mg/dL)</label><input id="cGlucose" type="number"></div></div><div id="cNaResult" class="calc-result">Masukkan Na dan glukosa.</div>`,bind:()=>{const run=()=>{const na=num($('cNa')?.value),g=num($('cGlucose')?.value);$('cNaResult').textContent=na!=null&&g!=null?`Corrected Na: ${(na+0.016*(g-100)).toFixed(1)} mEq/L`:'Masukkan Na dan glukosa.'};['cNa','cGlucose'].forEach(id=>$(id)?.addEventListener('input',run));}}
-];
-function renderTools(){const q=clean($('toolSearch').value).toLowerCase();const rows=calculatorDefs.filter(t=>(t.name+' '+t.desc+' '+t.cat).toLowerCase().includes(q));$('toolsList').innerHTML=rows.map(t=>`<article class="tool-card calculator-card"><div><span class="eyebrow">${t.cat}</span><h2>${t.name}</h2><p>${t.desc}</p></div><div class="calculator-body">${t.html()}</div></article>`).join('');rows.forEach(t=>t.bind());}
-async function ensureDefaultTemplate(){
-  let list=await dbAll('templates');
-  if(!list.length){await dbPut('templates',{id:crypto.randomUUID(),name:DEFAULT_TEMPLATE_NAME,body:DEFAULT_TEMPLATE,system:true,updatedAt:now()});list=await dbAll('templates');}
-  state.activeTemplateId=list.find(t=>t.system)?.id||list[0]?.id||null;
-}
-async function populateTemplateSelects(){
-  const list=await dbAll('templates');
-  const opts=list.map(t=>`<option value="${t.id}">${esc(t.name)}${t.system?' · bawaan':''}</option>`).join('');
-  const form=$('formTemplateSelect');
-  if(form){const current=form.value||state.activeTemplateId||list[0]?.id||'';form.innerHTML=opts;form.value=current;state.activeTemplateId=form.value||state.activeTemplateId;}
+
+const $=id=>document.getElementById(id);
+const now=()=>new Date().toISOString();
+const clean=v=>(v??'').toString().trim();
+const num=v=>clean(v)===''?null:Number(v);
+
+function openDB(){
+  return new Promise((resolve,reject)=>{
+    const r=indexedDB.open(DB_NAME,DB_VERSION);
+    r.onupgradeneeded=()=>{
+      const db=r.result;
+      if(!db.objectStoreNames.contains('patients'))
+        db.createObjectStore('patients',{keyPath:'id'});
+      if(!db.objectStoreNames.contains('settings'))
+        db.createObjectStore('settings',{keyPath:'key'});
+      if(!db.objectStoreNames.contains('templates'))
+        db.createObjectStore('templates',{keyPath:'id'});
+    };
+    r.onsuccess=()=>resolve(r.result);
+    r.onerror=()=>reject(r.error);
+  });
 }
 
-async function renderTemplates(){const list=await dbAll('templates');$('templateList').innerHTML=list.map(t=>`<div class="template-card"><div><strong>${esc(t.name)}</strong><small>${t.system?'Template bawaan':'Template saya'}</small></div><button class="secondary-btn" data-template-edit="${t.id}">Edit</button></div>`).join('');}
-function openTemplateEditor(id=null){state.templateId=id;const load=id?dbGet('templates',id):Promise.resolve(null);load.then(t=>{const x=t||{name:'Template baru',body:DEFAULT_TEMPLATE};$('templateName').value=x.name;$('templateBody').value=x.body;$('templateEditorTitle').textContent=id?'Edit template':'Template baru';$('templateEditor').hidden=false;});}
-const fields=['[WAKTU]','[NAMA_DOKTER]','[UNIT]','[RS]','[NAMA_PASIEN]','[JENIS_KELAMIN]','[USIA]','[BB_IF_AVAILABLE]','[DIAGNOSIS]','[SUBJECTIVE]','[GCS_IF_AVAILABLE]','[VITALS]','[PHYSICAL_EXAM]','[ASSESSMENT]','[PLAN]','[MAP_IF_AVAILABLE]','[SHOCK_INDEX_IF_AVAILABLE]'];
-async function saveTemplate(){const name=clean($('templateName').value)||'Template tanpa nama',body=$('templateBody').value.trim();if(!body){toast('Isi template belum ada.');return;}const old=state.templateId?await dbGet('templates',state.templateId):null;await dbPut('templates',{id:old?.id||crypto.randomUUID(),name,body,system:old?.system||false,updatedAt:now()});$('templateEditor').hidden=true;await renderTemplates();await populateTemplateSelects();toast('Template disimpan');}
-async function refreshPatients(){state.patients=await dbAll('patients');state.patients.sort((a,b)=>new Date(b.createdAt||b.updatedAt)-new Date(a.createdAt||a.updatedAt));renderList();}
-async function saveProfile(){await dbPut('settings',{key:'profile',value:{doctor:clean($('doctorName').value),hospital:clean($('hospital').value),unit:clean($('unit').value)}});updateWorkContext();$('settingsModal').hidden=true;toast('Profil kerja disimpan');}
-async function updateWorkContext(){const p=await profile();$('workContext').textContent=p.doctor?`${p.doctor}${p.unit?' · '+p.unit:''}`:'Profil kerja belum diatur';$('profileDoctorLabel').textContent=p.doctor||'Profil kerja';$('profileUnitLabel').textContent=p.unit||'Atur profil kerja';$('profileBtn').title=p.doctor?'Edit profil kerja':'Atur profil kerja';}
-async function openSettings(){const p=await profile();$('doctorName').value=p.doctor||'';$('hospital').value=p.hospital||'';$('unit').value=p.unit||'';$('settingsModal').hidden=false;}
-function exportData(){Promise.all([dbAll('patients'),dbAll('settings'),dbAll('templates')]).then(([patients,settings,templates])=>{const blob=new Blob([JSON.stringify({version:2,exportedAt:now(),patients,settings,templates},null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`ruangdokter-backup-${new Date().toISOString().slice(0,10)}.json`;a.click();URL.revokeObjectURL(a.href);toast('Backup dibuat');});}
-async function importData(file){try{const d=JSON.parse(await file.text());for(const p of d.patients||[])await dbPut('patients',p);for(const s of d.settings||[])await dbPut('settings',s);for(const t of d.templates||[])await dbPut('templates',t);await refreshPatients();updateWorkContext();toast('Backup dipulihkan');}catch{toast('File backup tidak valid.');}}
-function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('show'),1800);}
-function bind(){
-$('newPatientBtn').onclick=openNew;$('detailCopyBtn').onclick=()=>state.detailId&&copyPatient(state.detailId);$('backToPatients').onclick=()=>showView('patients');$('backFromDetail').onclick=()=>showView('patients');$('savePatientBtn').onclick=saveForm;$('cancelFormBtn').onclick=()=>showView('patients');$('patientForm').addEventListener('submit',e=>{e.preventDefault();saveForm();});$('oxygen').addEventListener('change',updateOxygenFlow);$('profileBtn').onclick=openSettings;$('saveSettingsBtn').onclick=saveProfile;$('exportBtn').onclick=exportData;$('importBtn').onclick=()=>$('importInput').click();$('importInput').onchange=e=>e.target.files[0]&&importData(e.target.files[0]);
-$('patientSearch').oninput=renderList;$('ageYears').oninput=()=>{updatePediatricFields();updatePreview()};document.querySelectorAll('#patientForm input,#patientForm textarea,#patientForm select').forEach(el=>el.addEventListener('input',updatePreview));
-document.querySelectorAll('.segment').forEach(b=>b.onclick=()=>{state.list=b.dataset.list;document.querySelectorAll('.segment').forEach(x=>x.classList.toggle('active',x===b));renderList()});
-document.querySelectorAll('[data-nav]').forEach(b=>b.onclick=()=>{const n=b.dataset.nav;if(n==='patients')showView('patients');else if(n==='tools'){renderTools();showView('tools')}else if(n==='templates'){renderTemplates();showView('templates')}else toast('Menu ini masuk tahap berikutnya.')});
-document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>$(b.dataset.close).hidden=true);document.querySelectorAll('[data-update-type]').forEach(b=>b.onclick=()=>{state.updateType=b.dataset.updateType;renderUpdateFields()});$('saveUpdateBtn').onclick=saveUpdate;$('saveConsultBtn').onclick=saveConsult;$('addSpecialtyBtn').onclick=addConsult;$('copyFormBtn').onclick=()=>{if(state.editingId)copyPatient(state.editingId);else toast('Simpan pasien dulu untuk copy dari History.')};
-$('physicalHelper').onclick=openPhysicalHelper;$('physicalSectionTabs').onclick=e=>{const b=e.target.closest('[data-physical-section]');if(b){physicalSection=b.dataset.physicalSection;renderPhysicalOptions();}};$('physicalOptions').onclick=e=>{const b=e.target.closest('[data-finding-index]');if(b){applyPhysicalFinding(b.dataset.findingIndex);renderPhysicalOptions();updatePreview();}};$('patientList').onclick=e=>{const b=e.target.closest('button[data-action]');if(b){const id=b.dataset.id,a=b.dataset.action;if(a==='copy')copyPatient(id);if(a==='consult')openConsult(id);if(a==='done')completePatient(id);if(a==='edit')openEdit(id);return;}const card=e.target.closest('[data-open-patient]');if(card)openDetail(card.dataset.openPatient)};
-$('consultRows').onclick=e=>{const rem=e.target.closest('[data-remove-consult]');if(rem){state.consultDraft.splice(Number(rem.dataset.removeConsult),1);renderConsultRows();return}const sp=e.target.closest('[data-consult-specialty]');if(sp){state.consultDraft[Number(sp.dataset.index)].specialty=sp.value;state.consultDraft[Number(sp.dataset.index)].updatedAt=now();return}const t=e.target.closest('[data-consult-field]');if(t){const i=Number(t.dataset.index),f=t.dataset.consultField;state.consultDraft[i][f]=!state.consultDraft[i][f];state.consultDraft[i].updatedAt=now();renderConsultRows()}};
-document.querySelectorAll('[data-copy-section]').forEach(b=>b.onclick=async()=>{const p=readForm(state.editingId?state.patients.find(x=>x.id===state.editingId):null);await copyText(await sectionText(p,b.dataset.copySection),'Tersalin')});$('toolSearch').oninput=renderTools;$('newTemplateBtn').onclick=()=>openTemplateEditor();
-$('formTemplateSelect').onchange=()=>{state.activeTemplateId=$('formTemplateSelect').value;updatePreview();};$('closeTemplateEditor').onclick=()=>{$('templateEditor').hidden=true};$('saveTemplateBtn').onclick=saveTemplate;$('templateFields').innerHTML=fields.map(f=>`<button type="button" class="chip" data-field="${f}">${f}</button>`).join('');$('templateFields').onclick=e=>{const b=e.target.closest('[data-field]');if(!b)return;const el=$('templateBody'),start=el.selectionStart,end=el.selectionEnd;el.value=el.value.slice(0,start)+b.dataset.field+el.value.slice(end);el.focus();el.selectionStart=el.selectionEnd=start+b.dataset.field.length;};$('templateList').onclick=e=>{const b=e.target.closest('[data-template-edit]');if(b)openTemplateEditor(b.dataset.templateEdit)};
+async function dbPut(store,value){
+  const db=await openDB();
+  return new Promise((res,rej)=>{
+    const tx=db.transaction(store,'readwrite');
+    tx.objectStore(store).put(value);
+    tx.oncomplete=res;
+    tx.onerror=()=>rej(tx.error);
+  });
 }
-(async function init(){bind();await ensureDefaultTemplate();await populateTemplateSelects();await updateWorkContext();await refreshPatients()})();
+
+async function dbGet(store,key){
+  const db=await openDB();
+  return new Promise((res,rej)=>{
+    const tx=db.transaction(store);
+    const r=tx.objectStore(store).get(key);
+    r.onsuccess=()=>res(r.result);
+    r.onerror=()=>rej(r.error);
+  });
+}
+
+async function dbAll(store){
+  const db=await openDB();
+  return new Promise((res,rej)=>{
+    const tx=db.transaction(store);
+    const r=tx.objectStore(store).getAll();
+    r.onsuccess=()=>res(r.result||[]);
+    r.onerror=()=>rej(r.error);
+  });
+}
+
+function formatDate(iso){
+  return new Intl.DateTimeFormat('id-ID',{
+    day:'2-digit',
+    month:'short',
+    year:'numeric',
+    hour:'2-digit',
+    minute:'2-digit'
+  }).format(new Date(iso));
+}
+
+function relativeTime(iso){
+  const mins=Math.max(0,Math.round((Date.now()-new Date(iso))/60000));
+  if(mins<1)return'baru saja';
+  if(mins<60)return`${mins} menit lalu`;
+
+  const h=Math.floor(mins/60);
+  if(h<24)return`${h} jam lalu`;
+
+  return formatDate(iso);
+}
+
+function greeting(){
+  const h=new Date().getHours();
+  return h<11?'pagi':h<15?'siang':h<18?'sore':'malam';
+}
+
+function patientGroup(y){
+  return Number(y)<PEDIATRIC_MAX_YEARS?'pediatric':'adult';
+}
+
+function genderLabel(g){
+  return g==='L'?'Laki-laki':g==='P'?'Perempuan':'';
+}
+
+function ageText(p){
+  const a=p.patient.age;
+
+  if(p.patient.group==='pediatric'){
+    const x=[];
+
+    if(a.years)x.push(`${a.years} tahun`);
+    if(a.months)x.push(`${a.months} bulan`);
+    if(a.days)x.push(`${a.days} hari`);
+
+    return x.join(' ')||'0 hari';
+  }
+
+  return a.years!=null?`${a.years} tahun`:'';
+}
+
+function physicalText(p){
+  const o=p.objective.physicalExam;
+  const lines=[];
+
+  if(clean(o.head))
+    lines.push(`Kepala: ${clean(o.head)}`);
+
+  if(clean(o.thorax))
+    lines.push(`Thorax: ${clean(o.thorax)}`);
+
+  if(clean(o.abdomen))
+    lines.push(`Abdomen: ${clean(o.abdomen)}`);
+
+  if(clean(o.extremities))
+    lines.push(`Ekstremitas: ${clean(o.extremities)}`);
+
+  if(clean(o.other))
+    lines.push(clean(o.other));
+
+  return lines.join('\n');
+}
+
+function gcsText(p){
+  const g=p.objective.gcs;
+
+  return [g.e,g.v,g.m].every(
+    x=>x!=null&&x!==''
+  )?`GCS: E${g.e}V${g.v}M${g.m}`:'';
+}
+
+function vitalsText(p){
+  const v=p.objective.vitals;
+  const lines=[];
+
+  if(v.sbp!=null&&v.dbp!=null)
+    lines.push(`TD: ${v.sbp}/${v.dbp}`);
+
+  if(v.hr!=null)
+    lines.push(`HR: ${v.hr}`);
+
+  if(v.rr!=null)
+    lines.push(`RR: ${v.rr}`);
+
+  if(v.temperature!=null)
+    lines.push(`T: ${v.temperature}`);
+
+  if(v.spo2!=null){
+    let ox=v.oxygen||'Room air';
+
+    if(
+      ox!=='Room air' &&
+      v.oxygenFlow!=null
+    ){
+      ox+=` ${v.oxygenFlow} L/menit`;
+    }
+
+    lines.push(`SpO₂: ${v.spo2}% ${ox}`);
+  }
+
+  return lines.join('\n');
+}
+
+function mapOf(p){
+  const v=p.objective.vitals;
+
+  return v.sbp!=null&&v.dbp!=null
+    ?Math.round((v.sbp+2*v.dbp)/3)
+    :null;
+}
+
+function shockIndex(p){
+  const v=p.objective.vitals;
+
+  return v.hr!=null&&v.sbp
+    ?Math.round((v.hr/v.sbp)*100)/100
+    :null;
+}
+
+function esc(v){
+  return String(v??'').replace(
+    /[&<>"']/g,
+    c=>({
+      '&':'&amp;',
+      '<':'&lt;',
+      '>':'&gt;',
+      '"':'&quot;',
+      "'":'&#039;'
+    }[c])
+  );
+}
+
+async function profile(){
+  return(
+    await dbGet('settings','profile')
+  )?.value||{
+    doctor:'',
+    hospital:'',
+    unit:''
+  };
+}
+
+function smartClean(t){
+  return t
+    .replace(/\n{3,}/g,'\n\n')
+    .split('\n')
+    .map(x=>x.trimEnd())
+    .join('\n')
+    .trim();
+}
+
+async function renderTemplate(body,p){
+  const pr=await profile();
+  let t=body;
+
+  const r=(a,b)=>{
+    t=t.split(a).join(b??'');
+  };
+
+  r('[WAKTU]',greeting());
+  r('[NAMA_DOKTER]',pr.doctor);
+  r('[UNIT]',pr.unit);
+  r('[RS]',pr.hospital);
+  r('[NAMA_PASIEN]',p.patient.name);
+  r('[JENIS_KELAMIN]',genderLabel(p.patient.gender));
+  r('[USIA]',ageText(p));
+
+  r(
+    '[BB_IF_AVAILABLE]',
+    p.patient.group==='pediatric'&&p.patient.weight!=null
+      ?`BB: ${p.patient.weight} kg`
+      :''
+  );
+
+  r(
+    '[DIAGNOSIS]',
+    p.diagnosis.length
+      ?p.diagnosis.join('\n')
+      :clean(p.assessment)
+  );
+
+  r('[SUBJECTIVE]',p.subjective);
+  r('[GCS_IF_AVAILABLE]',gcsText(p));
+  r('[VITALS]',vitalsText(p));
+  r('[PHYSICAL_EXAM]',physicalText(p));
+  r('[ASSESSMENT]',p.assessment);
+  r('[PLAN]',p.plan);
+
+  r(
+    '[MAP_IF_AVAILABLE]',
+    mapOf(p)!=null
+      ?`MAP: ${mapOf(p)} mmHg`
+      :''
+  );
+
+  r(
+    '[SHOCK_INDEX_IF_AVAILABLE]',
+    shockIndex(p)!=null
+      ?`Shock Index: ${shockIndex(p)}`
+      :''
+  );
+
+  return smartClean(t);
+}
+
+async function buildConsultation(p,templateId=null){
+  const templates=await dbAll('templates');
+
+  const selectedId=
+    templateId||
+    p.templateId||
+    state.activeTemplateId;
+
+  const selected=
+    templates.find(t=>t.id===selectedId)||
+    templates.find(t=>t.system)||
+    templates[0];
+
+  if(selected)
+    state.activeTemplateId=selected.id;
+
+  return renderTemplate(
+    selected?.body||DEFAULT_TEMPLATE,
+    p
+  );
+}
+
+function sectionText(p,s){
+  if(s==='s')
+    return clean(p.subjective||'');
+
+  if(s==='a')
+    return clean(p.assessment||'');
+
+  if(s==='p')
+    return clean(p.plan||'');
+
+  if(s==='o'){
+    return[
+      gcsText(p),
+      vitalsText(p),
+      physicalText(p)
+    ]
+    .filter(Boolean)
+    .join('\n');
+  }
+
+  return buildConsultation(p);
+}
+
+function emptyPatient(){
+  return{
+    id:crypto.randomUUID(),
+    createdAt:now(),
+    updatedAt:now(),
+    status:'active',
+    templateId:null,
+
+    patient:{
+      name:'',
+      gender:'',
+      group:'adult',
+      age:{
+        years:null,
+        months:null,
+        days:null
+      },
+      weight:null
+    },
+
+    diagnosis:[],
+    subjective:'',
+
+    objective:{
+      gcs:{
+        e:null,
+        v:null,
+        m:null
+      },
+
+      vitals:{
+        sbp:null,
+        dbp:null,
+        hr:null,
+        rr:null,
+        temperature:null,
+        spo2:null,
+        oxygen:'Room air',
+        oxygenFlow:null
+      },
+
+      physicalExam:{
+        head:'CA -/-, SI -/-',
+        thorax:'ves +/+, rh -/-, wh -/-. BJ reg, m -, g -.',
+        abdomen:'supel, BU +',
+        extremities:'akral hangat, CRT <2s',
+        other:''
+      }
+    },
+
+    assessment:'',
+    plan:'',
+    consultations:[],
+    timeline:[]
+  };
+}
+
+function readForm(existing){
+  const p=existing||emptyPatient();
+
+  const years=num($('ageYears').value)??0;
+  const g=patientGroup(years);
+
+  p.updatedAt=now();
+
+  p.templateId=
+    $('formTemplateSelect')?.value||
+    p.templateId||
+    null;
+
+  p.patient={
+    ...p.patient,
+
+    name:clean($('patientName').value),
+    gender:$('gender').value,
+    group:g,
+
+    age:{
+      years,
+      months:
+        g==='pediatric'
+          ?num($('ageMonths').value)||0
+          :0,
+      days:
+        g==='pediatric'
+          ?num($('ageDays').value)||0
+          :0
+    },
+
+    weight:
+      g==='pediatric'
+        ?num($('weight').value)
+        :null
+  };
+
+  p.diagnosis=
+    clean($('diagnosis').value)
+      .split(/\n+/)
+      .map(x=>x.trim())
+      .filter(Boolean);
+
+  p.subjective=
+    clean($('subjective').value);
+
+  p.objective={
+    gcs:{
+      e:num($('gcsE').value),
+      v:num($('gcsV').value),
+      m:num($('gcsM').value)
+    },
+
+    vitals:{
+      sbp:num($('sbp').value),
+      dbp:num($('dbp').value),
+      hr:num($('hr').value),
+      rr:num($('rr').value),
+      temperature:num($('temperature').value),
+      spo2:num($('spo2').value),
+      oxygen:$('oxygen').value,
+      oxygenFlow:num($('oxygenFlow').value)
+    },
+
+    physicalExam:{
+      head:clean($('headExam').value),
+      thorax:clean($('thoraxExam').value),
+      abdomen:clean($('abdomenExam').value),
+      extremities:clean($('extremityExam').value),
+      other:clean($('otherExam').value)
+    }
+  };
+
+  p.assessment=
+    clean($('assessment').value);
+
+  p.plan=
+    clean($('plan').value);
+
+  return p;
+}
+
+function fillForm(p){
+  $('patientId').value=p.id;
+  $('formTitle').textContent='Edit Pasien';
+
+  $('formTemplateSelect').value=
+    p.templateId||
+    state.activeTemplateId||
+    '';
+
+  $('patientName').value=p.patient.name;
+  $('gender').value=p.patient.gender;
+
+  $('ageYears').value=
+    p.patient.age.years??'';
+
+  $('ageMonths').value=
+    p.patient.age.months||'';
+
+  $('ageDays').value=
+    p.patient.age.days||'';
+
+  $('weight').value=
+    p.patient.weight??'';
+
+  $('diagnosis').value=
+    p.diagnosis.join('\n');
+
+  $('subjective').value=
+    p.subjective;
+
+  $('gcsE').value=
+    p.objective.gcs.e??'';
+
+  $('gcsV').value=
+    p.objective.gcs.v??'';
+
+  $('gcsM').value=
+    p.objective.gcs.m??'';
+
+  const v=p.objective.vitals;
+
+  $('sbp').value=v.sbp??'';
+  $('dbp').value=v.dbp??'';
+  $('hr').value=v.hr??'';
+  $('rr').value=v.rr??'';
+  $('temperature').value=v.temperature??'';
+  $('spo2').value=v.spo2??'';
+
+  $('oxygen').value=
+    v.oxygen||'Room air';
+
+  $('oxygenFlow').value=
+    v.oxygenFlow??'';
+
+  updateOxygenFlow();
+
+  const o=p.objective.physicalExam;
+
+  $('headExam').value=o.head||'';
+  $('thoraxExam').value=o.thorax||'';
+  $('abdomenExam').value=o.abdomen||'';
+  $('extremityExam').value=o.extremities||'';
+  $('otherExam').value=o.other||'';
+
+  $('assessment').value=
+    p.assessment;
+
+  $('plan').value=
+    p.plan;
+
+  updatePediatricFields();
+  updatePreview();
+}
+
+function updatePediatricFields(){
+  const y=num($('ageYears').value);
+
+  const show=
+    y!==null&&
+    y<PEDIATRIC_MAX_YEARS;
+
+  $('pediatricFields').hidden=!show;
+
+  if(!show){
+    $('ageMonths').value='';
+    $('ageDays').value='';
+    $('weight').value='';
+  }
+}
+
+function updateOxygenFlow(){
+  const show=
+    $('oxygen').value!=='Room air';
+
+  $('oxygenFlowWrap').hidden=!show;
+
+  if(!show)
+    $('oxygenFlow').value='';
+}
+
+const physicalOptions={
+  head:[
+    {
+      label:'Konjungtiva anemis',
+      value:'CA +/+',
+      normal:'CA -/-',
+      replace:['CA -/-','CA +/+']
+    },
+    {
+      label:'Sklera ikterik',
+      value:'SI +/+',
+      normal:'SI -/-',
+      replace:['SI -/-','SI +/+']
+    },
+    {
+      label:'Sianosis',
+      value:'sianosis +',
+      append:true
+    },
+    {
+      label:'Edema palpebra',
+      value:'edema palpebra +',
+      append:true
+    },
+    {
+      label:'Pupil anisokor',
+      value:'pupil anisokor',
+      append:true
+    }
+  ],
+
+  thorax:[
+    {
+      label:'Vesikuler menurun bilateral',
+      value:'ves -/-',
+      normal:'ves +/+',
+      replace:['ves +/+','ves -/-']
+    },
+    {
+      label:'Ronki bilateral',
+      value:'rh +/+',
+      normal:'rh -/-',
+      replace:['rh -/-','rh +/+']
+    },
+    {
+      label:'Wheezing bilateral',
+      value:'wh +/+',
+      normal:'wh -/-',
+      replace:['wh -/-','wh +/+']
+    },
+    {
+      label:'BJ ireguler',
+      value:'BJ ireg',
+      normal:'BJ reg',
+      replace:['BJ reg','BJ ireg']
+    },
+    {
+      label:'Murmur',
+      value:'m +',
+      normal:'m -',
+      replace:['m -','m +']
+    },
+    {
+      label:'Gallop',
+      value:'g +',
+      normal:'g -',
+      replace:['g -','g +']
+    },
+    {
+      label:'Retraksi',
+      value:'retraksi +',
+      append:true
+    }
+  ],
+
+  abdomen:[
+    {
+      label:'Distensi',
+      value:'distensi',
+      normal:'supel',
+      replace:['supel','distensi']
+    },
+    {
+      label:'Nyeri tekan',
+      value:'NT +',
+      append:true
+    },
+    {
+      label:'Defans muscular',
+      value:'defans +',
+      append:true
+    },
+    {
+      label:'BU menurun/tidak terdengar',
+      value:'BU -',
+      normal:'BU +',
+      replace:['BU +','BU -']
+    },
+    {
+      label:'Hepatomegali',
+      value:'hepatomegali +',
+      append:true
+    },
+    {
+      label:'Splenomegali',
+      value:'splenomegali +',
+      append:true
+    },
+    {
+      label:'Ascites',
+      value:'asites +',
+      append:true
+    }
+  ],
+
+  extremities:[
+    {
+      label:'Akral dingin',
+      value:'akral dingin',
+      normal:'akral hangat',
+      replace:['akral hangat','akral dingin']
+    },
+    {
+      label:'CRT >2 detik',
+      value:'CRT >2s',
+      normal:'CRT <2s',
+      replace:['CRT <2s','CRT >2s']
+    },
+    {
+      label:'Edema bilateral',
+      value:'edema +/+',
+      append:true
+    },
+    {
+      label:'Sianosis',
+      value:'sianosis +',
+      append:true
+    },
+    {
+      label:'Clubbing',
+      value:'clubbing +',
+      append:true
+    },
+    {
+      label:'Nyeri tekan',
+      value:'nyeri tekan +',
+      append:true
+    }
+  ]
+};
+
+let physicalSection='head';
+
+function openPhysicalHelper(){
+  renderPhysicalOptions();
+  $('physicalModal').hidden=false;
+}
+
+function physicalInputId(){
+  return physicalSection==='extremities'
+    ?'extremityExam'
+    :physicalSection+'Exam';
+}
+
+function physicalCurrent(){
+  return $(physicalInputId()).value.trim();
+}
+
+function findingSelected(finding,current){
+  return current.includes(finding.value);
+}
+
+function renderPhysicalOptions(){
+  const map={
+    head:'Kepala & Mata',
+    thorax:'Thorax',
+    abdomen:'Abdomen',
+    extremities:'Ekstremitas'
+  };
+
+  $('physicalSectionTabs').innerHTML=
+    Object.keys(map)
+      .map(k=>`
+        <button
+          type="button"
+          class="segment ${physicalSection===k?'active':''}"
+          data-physical-section="${k}">
+          ${map[k]}
+        </button>
+      `)
+      .join('');
+
+  const current=physicalCurrent();
+  const opts=physicalOptions[physicalSection]||[];
+
+  $('physicalOptions').innerHTML=
+    opts.map((f,i)=>`
+      <button
+        type="button"
+        class="finding-chip ${findingSelected(f,current)?'selected':''}"
+        data-finding-index="${i}">
+        ${f.label}
+        <small>${esc(f.value)}</small>
+      </button>
+    `)
+    .join('');
+
+  const note=
+    document.querySelector('.physical-helper-note');
+
+  if(note)
+    note.remove();
+
+  $('physicalOptions').insertAdjacentHTML(
+    'beforebegin',
+    `<p class="helper physical-helper-note">
+      Klik temuan untuk mengubah pemeriksaan.
+      Klik lagi untuk mengembalikan nilai normal atau menghapus temuan.
+    </p>`
+  );
+}
+
+function removeFindingClause(text,value){
+  return text
+    .split(',')
+    .map(x=>x.trim())
+    .filter(x=>x&&x!==value)
+    .join(', ');
+}
+
+function applyPhysicalFinding(index){
+  const f=
+    physicalOptions[physicalSection]?.[Number(index)];
+
+  if(!f)return;
+
+  const el=$(physicalInputId());
+  let text=el.value.trim();
+
+  if(f.replace){
+
+    if(text.includes(f.value)){
+      el.value=
+        text.replace(
+          f.value,
+          f.normal||f.replace[0]
+        );
+    }else{
+
+      const normal=
+        f.normal||f.replace[0];
+
+      if(text.includes(normal)){
+        el.value=
+          text.replace(
+            normal,
+            f.value
+          );
+      }else if(!text){
+        el.value=f.value;
+      }else{
+        el.value=
+          text.replace(/[.]$/,'')+
+          ', '+
+          f.value;
+      }
+    }
+
+  }else if(f.append){
+
+    if(text.includes(f.value)){
+      el.value=
+        removeFindingClause(
+          text,
+          f.value
+        );
+    }else if(!text){
+      el.value=f.value;
+    }else{
+      el.value=
+        text.replace(/[.]$/,'')+
+        ', '+
+        f.value;
+    }
+  }
+
+  updatePreview();
+}
+
+function ewsScore(p){
+  const v=p.objective.vitals;
+  const g=p.objective.gcs;
+
+  const rr=v.rr;
+  const sp=v.spo2;
+  const hr=v.hr;
+  const t=v.temperature;
+
+  const vals=[
+    rr,
+    sp,
+    hr,
+    t
+  ];
+
+  if(
+    vals.some(
+      x=>x==null||Number.isNaN(x)
+    )
+  ){
+    return null;
+  }
+
+  let score=0;
+
+  if(rr>=25)
+    score+=3;
+  else if(rr>=21)
+    score+=2;
+  else if(rr>=12)
+    score+=0;
+  else if(rr>=9)
+    score+=1;
+  else
+    score+=3;
+
+  if(sp<=91)
+    score+=3;
+  else if(sp<=93)
+    score+=2;
+  else if(sp<=95)
+    score+=1;
+
+  if(hr<=40)
+    score+=3;
+  else if(hr<=50)
+    score+=1;
+  else if(hr<=90)
+    score+=0;
+  else if(hr<=110)
+    score+=1;
+  else if(hr<=130)
+    score+=2;
+  else
+    score+=3;
+
+  if(t<=35)
+    score+=3;
+  else if(t<=36)
+    score+=1;
+  else if(t<=38)
+    score+=0;
+  else if(t<=39)
+    score+=1;
+  else
+    score+=2;
+
+  const gcsTotal=
+    [g.e,g.v,g.m].every(
+      x=>x!=null
+    )
+      ?g.e+g.v+g.m
+      :15;
+
+  if(gcsTotal<15)
+    score+=3;
+
+  return score;
+}
+
+function ewsLabel(score){
+  if(score>=7)return'Kritis';
+  if(score>=5)return'Perhatian';
+  return'Normal';
+}
+
+function clinicalAutoText(p){
+  const parts=[];
+
+  const map=mapOf(p);
+  const si=shockIndex(p);
+  const ews=ewsScore(p);
+
+  if(map!=null){
+    parts.push(`
+      <div>
+        <b>${map}</b>
+        <small>MAP</small>
+      </div>
+    `);
+  }
+
+  if(si!=null){
+    parts.push(`
+      <div>
+        <b>${si}</b>
+        <small>Shock Index</small>
+      </div>
+    `);
+  }
+
+  if(ews!=null){
+    parts.push(`
+      <div>
+        <b>${ews}</b>
+        <small>EWS · ${ewsLabel(ews)}</small>
+      </div>
+    `);
+  }
+
+  return parts.join('');
+}
+
+function renderClinicalAutoTools(p){
+  const box=$('clinicalAutoTools');
+
+  if(!box)return;
+
+  const v=p.objective.vitals;
+
+  const hasAny=[
+    v.sbp,
+    v.dbp,
+    v.hr,
+    v.rr,
+    v.temperature,
+    v.spo2
+  ].some(x=>x!=null);
+
+  if(!hasAny){
+    box.hidden=true;
+    box.innerHTML='';
+    return;
+  }
+
+  const map=mapOf(p);
+  const si=shockIndex(p);
+  const ews=ewsScore(p);
+
+  box.hidden=false;
+
+  box.innerHTML=`
+    <div class="auto-tools-head">
+      <div>
+        <span class="eyebrow">Otomatis</span>
+        <strong>Clinical tools</strong>
+      </div>
+      <small>Mengikuti TTV yang diinput</small>
+    </div>
+
+    <div class="auto-tools-grid">
+
+      <div class="auto-tool">
+        <b>${map!=null?map:'—'}</b>
+        <small>MAP</small>
+      </div>
+
+      <div class="auto-tool">
+        <b>${si!=null?si:'—'}</b>
+        <small>Shock Index</small>
+      </div>
+
+      <div class="auto-tool">
+        <b>${ews!=null?ews:'—'}</b>
+        <small>
+          EWS${ews!=null?' · '+ewsLabel(ews):''}
+        </small>
+      </div>
+
+    </div>
+  `;
+}
+
+async function updatePreview(){
+  const p=
+    readForm(
+      state.editingId
+        ?state.patients.find(
+          x=>x.id===state.editingId
+        )
+        :null
+    );
+
+  renderClinicalAutoTools(p);
+
+  if(!$('patientName').value.trim()){
+    $('formPreview').textContent=
+      'Isi identitas pasien untuk melihat preview.';
+    return;
+  }
+
+  $('formPreview').textContent=
+    await buildConsultation(p);
+}
+
+function showView(name){
+  [
+    'patients',
+    'form',
+    'detail',
+    'tools',
+    'templates'
+  ].forEach(
+    v=>$(v+'View').hidden=v!==name
+  );
+
+  document
+    .querySelectorAll('.nav-item')
+    .forEach(
+      b=>b.classList.toggle(
+        'active',
+        b.dataset.nav===name||
+        name==='detail'&&
+        b.dataset.nav==='patients'
+      )
+    );
+
+  window.scrollTo({
+    top:0,
+    behavior:'instant'
+  });
+}
+
+function openNew(){
+  state.editingId=null;
+
+  $('patientForm').reset();
+  $('patientId').value='';
+
+  $('formTemplateSelect').value=
+    state.activeTemplateId||'';
+
+  $('formTitle').textContent=
+    'Pasien Baru';
+
+  $('oxygen').value=
+    'Room air';
+
+  $('oxygenFlow').value='';
+
+  updateOxygenFlow();
+
+  $('headExam').value=
+    'CA -/-, SI -/-';
+
+  $('thoraxExam').value=
+    'ves +/+, rh -/-, wh -/-. BJ reg, m -, g -.';
+
+  $('abdomenExam').value=
+    'supel, BU +';
+
+  $('extremityExam').value=
+    'akral hangat, CRT <2s';
+
+  updatePediatricFields();
+  updatePreview();
+
+  showView('form');
+}
+
+function openEdit(id){
+  const p=
+    state.patients.find(
+      x=>x.id===id
+    );
+
+  if(!p)return;
+
+  state.editingId=id;
+
+  fillForm(p);
+  showView('form');
+}
+
+async function saveForm(){
+  const existing=
+    state.editingId
+      ?state.patients.find(
+        x=>x.id===state.editingId
+      )
+      :null;
+
+  const p=readForm(existing);
+
+  if(
+    !p.patient.name||
+    !p.patient.gender
+  ){
+    toast(
+      'Lengkapi nama dan jenis kelamin.'
+    );
+    return;
+  }
+
+  if(
+    !existing&&
+    !p.timeline.length
+  ){
+    p.timeline.push({
+      id:crypto.randomUUID(),
+      type:'created',
+      at:p.createdAt,
+      summary:'Pasien dibuat dan masuk daftar aktif'
+    });
+  }
+
+  await dbPut('patients',p);
+  await refreshPatients();
+
+  toast(
+    existing
+      ?'Pasien diperbarui'
+      :'Pasien disimpan'
+  );
+
+  showView('patients');
+}
+
+function consultSummary(p){
+  if(!p.consultations?.length)
+    return'Belum ada';
+
+  return p.consultations
+    .map(
+      c=>
+        `${c.specialty} `+
+        `${c.contacted?'✓':'⏳'}`+
+        `${c.adviceReceived?' · advice ✓':''}`
+    )
+    .join(' • ');
+}
+
+function renderList(){
+  const q=
+    clean(
+      $('patientSearch').value
+    ).toLowerCase();
+
+  const status=
+    state.list==='archive'
+      ?'completed'
+      :'active';
+
+  let rows=
+    state.patients.filter(
+      p=>p.status===status
+    );
+
+  rows.sort(
+    (a,b)=>
+      new Date(
+        b.createdAt||b.updatedAt
+      )-
+      new Date(
+        a.createdAt||a.updatedAt
+      )
+  );
+
+  if(q){
+    rows=rows.filter(
+      p=>
+        (
+          p.patient.name+
+          ' '+
+          p.diagnosis.join(' ')
+        )
+        .toLowerCase()
+        .includes(q)
+    );
+  }
+
+  $('activeCount').textContent=
+    state.patients.filter(
+      p=>p.status==='active'
+    ).length;
+
+  $('archiveCount').textContent=
+    state.patients.filter(
+      p=>p.status==='completed'
+    ).length;
+
+  const c=$('patientList');
+
+  if(!rows.length){
+    c.innerHTML=`
+      <div class="empty">
+        <strong>
+          ${
+            state.list==='active'
+              ?'Belum ada pasien aktif'
+              :'Arsip masih kosong'
+          }
+        </strong>
+
+        ${
+          state.list==='active'
+            ?'Klik “Pasien Baru” untuk mulai.'
+            :'Pasien yang selesai akan muncul di sini.'
+        }
+      </div>
+    `;
+
+    return;
+  }
+
+  c.innerHTML=
+    rows.map(p=>{
+      const done=
+        p.status==='completed';
+
+      const created=
+        p.createdAt||p.updatedAt;
+
+      return`
+        <article
+          class="patient-card"
+          data-open-patient="${p.id}">
+
+          <div class="patient-main">
+
+            <div>
+
+              <div class="patient-name">
+                ${esc(p.patient.name)}
+              </div>
+
+              <div class="patient-meta">
+                ${esc(ageText(p))}
+                ${
+                  p.patient.gender
+                    ?' • '+esc(p.patient.gender)
+                    :''
+                }
+
+                ${
+                  p.patient.group==='pediatric'&&
+                  p.patient.weight!=null
+                    ?' • BB '+
+                      esc(p.patient.weight)+
+                      ' kg'
+                    :''
+                }
+              </div>
+
+              <div class="diagnosis">
+                ${
+                  esc(
+                    p.diagnosis.join(' • ')||
+                    'Belum ada diagnosis'
+                  )
+                }
+              </div>
+
+            </div>
+
+            <span
+              class="status-badge ${done?'done':''}">
+              ${done?'Selesai':'Belum selesai'}
+            </span>
+
+          </div>
+
+          <div class="consult-line">
+            Konsul:
+            <strong>
+              ${esc(consultSummary(p))}
+            </strong>
+          </div>
+
+          <div class="patient-actions">
+
+            ${
+              done
+                ?`
+                  <button
+                    class="secondary-btn"
+                    data-action="edit"
+                    data-id="${p.id}">
+                    Buka
+                  </button>
+                `
+                :`
+                  <button
+                    class="secondary-btn"
+                    data-action="copy"
+                    data-id="${p.id}">
+                    Copy Konsul
+                  </button>
+
+                  <button
+                    class="secondary-btn"
+                    data-action="consult"
+                    data-id="${p.id}">
+                    ＋ Konsul
+                  </button>
+
+                  <button
+                    class="primary-btn"
+                    data-action="done"
+                    data-id="${p.id}">
+                    Selesai
+                  </button>
+                `
+            }
+
+            ${
+              done
+                ?`
+                  <button
+                    class="secondary-btn"
+                    data-action="copy"
+                    data-id="${p.id}">
+                    Copy Konsul
+                  </button>
+                `
+                :''
+            }
+
+          </div>
+
+          <div class="time-row">
+            <span>
+              Input: ${formatDate(created)}
+            </span>
+
+            <span>
+              Update: ${relativeTime(p.updatedAt)}
+            </span>
+          </div>
+
+        </article>
+      `;
+    })
+    .join('');
+}
+
+async function copyText(
+  text,
+  msg='Tersalin'
+){
+  try{
+    await navigator.clipboard.writeText(text);
+    toast(msg);
+  }catch{
+    toast('Clipboard tidak tersedia.');
+  }
+}
+
+async function copyPatient(
+  id,
+  section='all'
+){
+  const p=
+    state.patients.find(
+      x=>x.id===id
+    );
+
+  if(!p)return;
+
+  await copyText(
+    await sectionText(p,section),
+    section==='all'
+      ?'Format konsultasi tersalin'
+      :'Bagian tersalin'
+  );
+}
+
+async function setPatientTemplate(
+  id,
+  templateId
+){
+  const p=
+    state.patients.find(
+      x=>x.id===id
+    );
+
+  if(!p)return;
+
+  p.templateId=
+    templateId||null;
+
+  p.updatedAt=now();
+
+  await dbPut('patients',p);
+
+  if(state.detailId===id)
+    renderDetail(p);
+
+  await refreshPatients();
+
+  toast(
+    'Template pasien diperbarui'
+  );
+}
+
+function openConsult(id){
+  const p=
+    state.patients.find(
+      x=>x.id===id
+    );
+
+  if(!p)return;
+
+  state.consultPatientId=id;
+
+  state.consultDraft=
+    (p.consultations||[])
+      .map(c=>({...c}));
+
+  renderConsultRows();
+
+  $('consultModal').hidden=false;
+}
+
+const specialties=[
+  ['Penyakit Dalam','SpPD'],
+  ['Anak','SpA'],
+  ['Jantung dan Pembuluh Darah','SpJP'],
+  ['Bedah','SpB'],
+  ['Obstetri dan Ginekologi','SpOG'],
+  ['Neurologi','SpN'],
+  ['Anestesiologi','SpAn'],
+  ['Mata','SpM'],
+  ['Telinga Hidung Tenggorok - Bedah Kepala Leher','SpTHT-KL'],
+  ['Dermatologi dan Venereologi','SpDV'],
+  ['Orthopaedi dan Traumatologi','SpOT'],
+  ['Urologi','SpU'],
+  ['Pulmonologi dan Kedokteran Respirasi','SpP'],
+  ['Psikiatri','SpKJ'],
+  ['Radiologi','SpRad']
+];
+
+const specialtyMap=
+  Object.fromEntries(
+    specialties.map(x=>[x[1],x[0]])
+  );
+
+function specialtyLabel(code){
+  return specialtyMap[code]||code;
+}
+
+function renderConsultRows(){
+  const c=$('consultRows');
+
+  c.innerHTML=
+    state.consultDraft
+      .map(
+        (x,i)=>`
+          <div class="consult-row">
+
+            <div class="row-between">
+
+              <select
+                class="consult-select"
+                data-consult-specialty
+                data-index="${i}">
+
+                ${
+                  specialties.map(
+                    ([label,code])=>`
+                      <option
+                        value="${code}"
+                        ${
+                          x.specialty===code
+                            ?'selected'
+                            :''
+                        }>
+                        ${label} (${code})
+                      </option>
+                    `
+                  ).join('')
+                }
+
+              </select>
+
+              <button
+                class="text-btn"
+                data-remove-consult="${i}">
+                Hapus
+              </button>
+
+            </div>
+
+            <div class="toggle-row">
+
+              <button
+                class="toggle ${
+                  x.contacted?'selected':''
+                }"
+                data-consult-field="contacted"
+                data-index="${i}">
+
+                ${
+                  x.contacted
+                    ?'✓ '
+                    :''
+                }
+
+                Sudah dihubungi
+
+              </button>
+
+              <button
+                class="toggle ${
+                  x.adviceReceived
+                    ?'selected'
+                    :''
+                }"
+                data-consult-field="adviceReceived"
+                data-index="${i}">
+
+                ${
+                  x.adviceReceived
+                    ?'✓ '
+                    :''
+                }
+
+                Advice sudah ada
+
+              </button>
+
+            </div>
+
+          </div>
+        `
+      )
+      .join('')||
+      `
+        <div class="empty">
+          Belum ada spesialis. Tambahkan satu.
+        </div>
+      `;
+}
+
+function addConsult(){
+  const used=
+    state.consultDraft.map(
+      x=>x.specialty
+    );
+
+  const specialty=
+    (
+      specialties.find(
+        x=>!used.includes(x[1])
+      )||
+      specialties[0]
+    )[1];
+
+  state.consultDraft.push({
+    id:crypto.randomUUID(),
+    specialty,
+    contacted:false,
+    adviceReceived:false,
+    createdAt:now(),
+    updatedAt:now()
+  });
+
+  renderConsultRows();
+}
+
+async function saveConsult(){
+  const p=
+    state.patients.find(
+      x=>x.id===state.consultPatientId
+    );
+
+  if(!p)return;
+
+  p.consultations=
+    state.consultDraft;
+
+  p.updatedAt=now();
+
+  p.timeline=
+    p.timeline||[];
+
+  p.timeline.push({
+    type:'consultation',
+    at:now(),
+
+    summary:
+      p.consultations
+        .map(
+          c=>
+            `${c.specialty}: `+
+            `${
+              c.contacted
+                ?'dihubungi'
+                :'belum'
+            }`+
+            `${
+              c.adviceReceived
+                ?', advice ada'
+                :''
+            }`
+        )
+        .join(' | ')
+  });
+
+  await dbPut('patients',p);
+  await refreshPatients();
+
+  $('consultModal').hidden=true;
+
+  if(state.detailId===p.id)
+    renderDetail(p);
+
+  toast(
+    'Status konsultasi disimpan'
+  );
+}
+
+function openUpdate(
+  id,
+  type='vitals'
+){
+  const p=
+    state.patients.find(
+      x=>x.id===id
+    );
+
+  if(!p)return;
+
+  state.updatePatientId=id;
+  state.updateType=type;
+
+  renderUpdateFields();
+
+  $('updateModal').hidden=false;
+}
+
+function updateVitalsFields(v){
+  return`
+    <div class="update-grid">
+
+      <div class="field">
+        <label>TD</label>
+
+        <div class="bp-input">
+
+          <input
+            id="uSbp"
+            type="number"
+            inputmode="numeric"
+            placeholder="SBP"
+            value="${v.sbp??''}">
+
+          <span>/</span>
+
+          <input
+            id="uDbp"
+            type="number"
+            inputmode="numeric"
+            placeholder="DBP"
+            value="${v.dbp??''}">
+
+        </div>
+      </div>
+
+      <div class="field">
+        <label>HR (/min)</label>
+
+        <input
+          id="uHr"
+          type="number"
+          inputmode="numeric"
+          value="${v.hr??''}">
+      </div>
+
+      <div class="field">
+        <label>RR (/min)</label>
+
+        <input
+          id="uRr"
+          type="number"
+          inputmode="numeric"
+          value="${v.rr??''}">
+      </div>
+
+      <div class="field">
+        <label>T (°C)</label>
+
+        <input
+          id="uTemp"
+          type="number"
+          step="0.1"
+          inputmode="decimal"
+          value="${v.temperature??''}">
+      </div>
+
+      <div class="field">
+        <label>SpO₂ (%)</label>
+
+        <input
+          id="uSpo2"
+          type="number"
+          min="0"
+          max="100"
+          inputmode="numeric"
+          value="${v.spo2??''}">
+      </div>
+
+      <div class="field">
+        <label>O₂</label>
+
+        <select id="uOxygen">
+          <option value="Room air">
+            Room air
+          </option>
+
+          <option value="Nasal cannula">
+            Nasal cannula
+          </option>
+
+          <option value="Simple mask">
+            Simple mask
+          </option>
+
+          <option value="NRM">
+            NRM
+          </option>
+
+          <option value="HFNC">
+            HFNC
+          </option>
+
+          <option value="Lainnya">
+            Lainnya
+          </option>
+        </select>
+      </div>
+
+      <div
+        class="field"
+        id="uOxygenFlowWrap"
+        hidden>
+
+        <label>
+          Flow O₂ (L/menit)
+        </label>
+
+        <input
+          id="uOxygenFlow"
+          type="number"
+          min="0"
+          step="0.1"
+          inputmode="decimal"
+          value="${v.oxygenFlow??''}">
+
+      </div>
+
+    </div>
+
+    <div class="subheading">
+      GCS
+    </div>
+
+    <div class="three-col gcs-grid">
+
+      <div class="field">
+        <label>E</label>
+
+        <input
+          id="uGcsE"
+          type="number"
+          min="1"
+          max="4"
+          value="${
+            pUpdate().objective.gcs.e??''
+          }">
+      </div>
+
+      <div class="field">
+        <label>V</label>
+
+        <input
+          id="uGcsV"
+          type="number"
+          min="1"
+          max="5"
+          value="${
+            pUpdate().objective.gcs.v??''
+          }">
+      </div>
+
+      <div class="field">
+        <label>M</label>
+
+        <input
+          id="uGcsM"
+          type="number"
+          min="1"
+          max="6"
+          value="${
+            pUpdate().objective.gcs.m??''
+          }">
+      </div>
+
+    </div>
+
+    <p class="helper">
+      Isi hanya data yang ingin diperbarui.
+      Nilai lama akan dipertahankan bila dikosongkan.
+    </p>
+  `;
+}
+
+function pUpdate(){
+  return state.patients.find(
+    x=>x.id===state.updatePatientId
+  )||emptyPatient();
+}
+
+function renderUpdateFields(){
+  const p=pUpdate();
+
+  document
+    .querySelectorAll('.update-tab')
+    .forEach(
+      b=>b.classList.toggle(
+        'active',
+        b.dataset.updateType===
+        state.updateType
+      )
+    );
+
+  if(state.updateType==='vitals'){
+
+    $('updateFields').innerHTML=
+      updateVitalsFields(
+        p.objective.vitals
+      );
+
+    $('uOxygen').value=
+      p.objective.vitals.oxygen||
+      'Room air';
+
+    updateUpdateOxygen();
+
+    $('uOxygen').onchange=
+      updateUpdateOxygen;
+
+    return;
+  }
+
+  const map={
+    assessment:[
+      'Assessment baru',
+      'assessment',
+      'Isi assessment terbaru...'
+    ],
+
+    plan:[
+      'Terapi / Plan baru',
+      'plan',
+      'Isi terapi atau rencana terbaru...'
+    ],
+
+    lab:[
+      'Hasil lab / penunjang',
+      'lab',
+      'Contoh: Hb 9.2, Leukosit 14.000, CXR ...'
+    ],
+
+    note:[
+      'Catatan',
+      'note',
+      'Catatan tambahan...'
+    ]
+  };
+
+  const[
+    label,
+    id,
+    ph
+  ]=map[state.updateType];
+
+  const current=
+    state.updateType==='assessment'
+      ?p.assessment
+      :state.updateType==='plan'
+        ?p.plan
+        :'';
+
+  $('updateFields').innerHTML=`
+    <div class="field">
+
+      <label for="updateText">
+        ${label}
+      </label>
+
+      <textarea
+        id="updateText"
+        rows="7"
+        placeholder="${ph}">${esc(current)}</textarea>
+
+    </div>
+
+    <p class="helper">
+      Update ini akan masuk ke timeline pasien.
+    </p>
+  `;
+}
+
+function updateUpdateOxygen(){
+  const show=
+    $('uOxygen')?.value!=='Room air';
+
+  if($('uOxygenFlowWrap'))
+    $('uOxygenFlowWrap').hidden=!show;
+
+  if(
+    !show&&
+    $('uOxygenFlow')
+  )
+    $('uOxygenFlow').value='';
+}
+
+async function saveUpdate(){
+  const p=pUpdate();
+
+  if(!p.id)return;
+
+  const at=now();
+
+  p.timeline=
+    p.timeline||[];
+
+  let summary='';
+
+  if(state.updateType==='vitals'){
+
+    const v=p.objective.vitals;
+
+    const pairs=[
+      ['sbp','uSbp'],
+      ['dbp','uDbp'],
+      ['hr','uHr'],
+      ['rr','uRr'],
+      ['temperature','uTemp'],
+      ['spo2','uSpo2']
+    ];
+
+    pairs.forEach(
+      ([key,id])=>{
+        const value=
+          num($(id)?.value);
+
+        if(value!=null)
+          v[key]=value;
+      }
+    );
+
+    const oxygen=
+      $('uOxygen')?.value;
+
+    if(oxygen){
+      v.oxygen=oxygen;
+
+      v.oxygenFlow=
+        oxygen==='Room air'
+          ?null
+          :num(
+            $('uOxygenFlow')?.value
+          );
+    }
+
+    const g=p.objective.gcs;
+
+    [
+      ['e','uGcsE'],
+      ['v','uGcsV'],
+      ['m','uGcsM']
+    ].forEach(
+      ([key,id])=>{
+        const value=
+          num($(id)?.value);
+
+        if(value!=null)
+          g[key]=value;
+      }
+    );
+
+    summary=
+      vitalsText(p)+
+      (
+        gcsText(p)
+          ?`\n${gcsText(p)}`
+          :''
+      );
+
+    if(!summary)
+      summary=
+        'Tidak ada perubahan data TTV.';
+
+  }else if(
+    state.updateType==='assessment'
+  ){
+
+    const value=
+      clean(
+        $('updateText').value
+      );
+
+    if(!value){
+      toast(
+        'Assessment belum diisi.'
+      );
+      return;
+    }
+
+    p.assessment=value;
+    summary=value;
+
+  }else if(
+    state.updateType==='plan'
+  ){
+
+    const value=
+      clean(
+        $('updateText').value
+      );
+
+    if(!value){
+      toast(
+        'Terapi / plan belum diisi.'
+      );
+      return;
+    }
+
+    p.plan=value;
+    summary=value;
+
+  }else if(
+    state.updateType==='lab'
+  ){
+
+    const value=
+      clean(
+        $('updateText').value
+      );
+
+    if(!value){
+      toast(
+        'Hasil lab / penunjang belum diisi.'
+      );
+      return;
+    }
+
+    summary=value;
+
+  }else{
+
+    const value=
+      clean(
+        $('updateText').value
+      );
+
+    if(!value){
+      toast(
+        'Catatan belum diisi.'
+      );
+      return;
+    }
+
+    summary=value;
+  }
+
+  const labels={
+    vitals:'TTV diperbarui',
+    assessment:'Assessment diperbarui',
+    plan:'Terapi / plan diperbarui',
+    lab:'Lab / penunjang diperbarui',
+    note:'Catatan ditambahkan'
+  };
+
+  p.timeline.push({
+    id:crypto.randomUUID(),
+    type:'update',
+    subtype:state.updateType,
+    at,
+    summary
+  });
+
+  p.updatedAt=at;
+
+  await dbPut('patients',p);
+  await refreshPatients();
+
+  $('updateModal').hidden=true;
+
+  if(state.detailId===p.id)
+    renderDetail(p);
+
+  toast(
+    labels[state.updateType]
+  );
+}
+
+async function completePatient(id){
+  const p=
+    state.patients.find(
+      x=>x.id===id
+    );
+
+  if(!p)return;
+
+  if(
+    !confirm(
+      `Selesaikan pasien ${p.patient.name}? Pasien akan masuk Arsip.`
+    )
+  )
+    return;
+
+  p.status='completed';
+  p.updatedAt=now();
+
+  p.timeline=
+    p.timeline||[];
+
+  p.timeline.push({
+    type:'completed',
+    at:now(),
+    summary:'Pasien dipindahkan ke arsip'
+  });
+
+  await dbPut('patients',p);
+  await refreshPatients();
+
+  toast(
+    'Pasien masuk Arsip'
+  );
+}
+
+function openDetail(id){
+  const p=
+    state.patients.find(
+      x=>x.id===id
+    );
+
+  if(!p)return;
+
+  state.detailId=id;
+
+  $('detailTitle').textContent=
+    p.patient.name;
+
+  renderDetail(p);
+  showView('detail');
+}
+
+function renderDetail(p){
+  $('detailTitle').textContent=
+    p.patient.name;
+
+  const map=mapOf(p);
+  const si=shockIndex(p);
+
+  const snapshot=[
+    map!=null
+      ?`
+        <div>
+          <b>${map}</b>
+          <small>MAP (mmHg)</small>
+        </div>
+      `
+      :'',
+
+    si!=null
+      ?`
+        <div>
+          <b>${si}</b>
+          <small>Shock Index</small>
+        </div>
+      `
+      :''
+  ]
+  .filter(Boolean)
+  .join('');
+
+  const tl=
+    (p.timeline||[])
+      .slice()
+      .sort(
+        (a,b)=>
+          new Date(b.at)-
+          new Date(a.at)
+      )
+      .map(e=>{
+        const updateLabels={
+          vitals:'TTV diperbarui',
+          assessment:'Assessment diperbarui',
+          plan:'Terapi / plan diperbarui',
+          lab:'Lab / penunjang diperbarui',
+          note:'Catatan ditambahkan'
+        };
+
+        const title=
+          e.type==='consultation'
+            ?'Konsultasi'
+            :e.type==='completed'
+              ?'Selesai'
+              :e.type==='created'
+                ?'Pasien dibuat'
+                :updateLabels[e.subtype]||
+                  'Update';
+
+        return`
+          <div class="timeline-item">
+
+            <div class="timeline-dot"></div>
+
+            <div>
+
+              <strong>
+                ${esc(title)}
+              </strong>
+
+              <small>
+                ${formatDate(e.at)}
+              </small>
+
+              <p>
+                ${esc(e.summary||'')}
+              </p>
+
+            </div>
+
+          </div>
+        `;
+      })
+      .join('');
+
+  $('detailContent').innerHTML=`
+
+    <div class="detail-head">
+
+      <div>
+
+        <div class="patient-meta">
+          ${esc(ageText(p))}
+          •
+          ${esc(
+            genderLabel(
+              p.patient.gender
+            )
+          )}
+        </div>
+
+        <div class="diagnosis">
+          ${esc(
+            p.diagnosis.join(' • ')
+          )}
+        </div>
+
+      </div>
+
+      <span
+        class="status-badge ${
+          p.status==='completed'
+            ?'done'
+            :''
+        }">
+
+        ${
+          p.status==='completed'
+            ?'Selesai'
+            :'Aktif'
+        }
+
+      </span>
+
+    </div>
+
+    <div class="detail-actions">
+
+      <button
+        class="secondary-btn"
+        id="detailEditBtn">
+        Edit
+      </button>
+
+      <button
+        class="secondary-btn"
+        id="detailUpdateBtn">
+        ＋ Update
+      </button>
+
+      <button
+        class="secondary-btn"
+        id="detailConsultBtn">
+        ＋ Konsul
+      </button>
+
+      ${
+        p.status==='active'
+          ?`
+            <button
+              class="primary-btn"
+              id="detailDoneBtn">
+              Selesai
+            </button>
+          `
+          :''
+      }
+
+    </div>
+
+    <div
+      class="detail-section template-choice">
+
+      <div class="row-between">
+
+        <div>
+          <p class="eyebrow">
+            Output
+          </p>
+
+          <h2>
+            Template konsultasi
+          </h2>
+        </div>
+
+        <select
+          id="detailTemplateSelect"
+          class="consult-select">
+        </select>
+
+      </div>
+
+    </div>
+
+    <div class="snapshot">
+
+      <div>
+        <b>
+          ${
+            p.objective.vitals.sbp!=null&&
+            p.objective.vitals.dbp!=null
+              ?`${p.objective.vitals.sbp}/${p.objective.vitals.dbp}`
+              :'—'
+          }
+        </b>
+        <small>TD</small>
+      </div>
+
+      <div>
+        <b>
+          ${p.objective.vitals.hr??'—'}
+        </b>
+        <small>HR</small>
+      </div>
+
+      <div>
+        <b>
+          ${p.objective.vitals.rr??'—'}
+        </b>
+        <small>RR</small>
+      </div>
+
+      <div>
+        <b>
+          ${
+            p.objective.vitals.spo2!=null
+              ?p.objective.vitals.spo2+'%'
+              :'—'
+          }
+        </b>
+        <small>SpO₂</small>
+      </div>
+
+    </div>
+
+    ${
+      snapshot
+        ?`
+          <div class="clinical-snapshot">
+
+            <div class="subheading">
+              Clinical Snapshot
+            </div>
+
+            ${snapshot}
+
+          </div>
+        `
+        :''
+    }
+
+    <section class="detail-section">
+
+      <div class="row-between">
+
+        <h2>
+          SOAP
+        </h2>
+
+        <button
+          class="secondary-btn"
+          id="detailCopyAll">
+          Copy All
+        </button>
+
+      </div>
+
+      <pre class="output-box">${
+        esc(
+          [
+            'S:',
+            p.subjective,
+            '',
+            'O:',
+            gcsText(p),
+            vitalsText(p),
+            physicalText(p),
+            '',
+            'A:',
+            p.assessment,
+            '',
+            'P:',
+            p.plan
+          ]
+          .filter(
+            (x,i)=>x||i===0
+          )
+          .join('\n')
+        )
+      }</pre>
+
+      <div
+        class="copy-grid detail-copy-grid">
+
+        <button
+          type="button"
+          data-detail-copy="s"
+          class="secondary-btn">
+          Copy S
+        </button>
+
+        <button
+          type="button"
+          data-detail-copy="o"
+          class="secondary-btn">
+          Copy O
+        </button>
+
+        <button
+          type="button"
+          data-detail-copy="a"
+          class="secondary-btn">
+          Copy A
+        </button>
+
+        <button
+          type="button"
+          data-detail-copy="p"
+          class="secondary-btn">
+          Copy P
+        </button>
+
+      </div>
+
+    </section>
+
+    <section class="detail-section">
+
+      <div class="row-between">
+        <h2>Konsultasi</h2>
+      </div>
+
+      <div class="consult-detail">
+
+        ${
+          p.consultations?.length
+
+            ?p.consultations
+              .map(
+                c=>`
+                  <div>
+
+                    <strong>
+                      ${esc(
+                        specialtyLabel(
+                          c.specialty
+                        )
+                      )}
+
+                      <small>
+                        (${esc(c.specialty)})
+                      </small>
+                    </strong>
+
+                    <span>
+                      ${
+                        c.contacted
+                          ?'✓ Dihubungi'
+                          :'⏳ Belum dihubungi'
+                      }
+
+                      ·
+
+                      ${
+                        c.adviceReceived
+                          ?'✓ Advice ada'
+                          :'⏳ Advice belum ada'
+                      }
+                    </span>
+
+                  </div>
+                `
+              )
+              .join('')
+
+            :'Belum ada konsultasi tercatat.'
+        }
+
+      </div>
+
+    </section>
+
+    <section class="detail-section">
+
+      <h2>
+        Timeline
+      </h2>
+
+      <div class="timeline">
+
+        ${
+          tl||
+          `
+            <div class="empty">
+              Belum ada event tambahan.
+            </div>
+          `
+        }
+
+      </div>
+
+    </section>
+  `;
+
+  $('detailUpdateBtn').onclick=
+    ()=>openUpdate(p.id);
+
+  $('detailEditBtn').onclick=
+    ()=>openEdit(p.id);
+
+  $('detailConsultBtn').onclick=
+    ()=>openConsult(p.id);
+
+  $('detailDoneBtn')?.addEventListener(
+    'click',
+    ()=>completePatient(p.id)
+  );
+
+  $('detailCopyAll').onclick=
+    ()=>copyPatient(p.id);
+
+  document
+    .querySelectorAll(
+      '[data-detail-copy]'
+    )
+    .forEach(
+      b=>
+        b.onclick=
+          ()=>copyPatient(
+            p.id,
+            b.dataset.detailCopy
+          )
+    );
+
+  populateTemplateSelects()
+    .then(()=>{
+      const ds=
+        $('detailTemplateSelect');
+
+      if(!ds)return;
+
+      const list=
+        document.querySelectorAll(
+          '#formTemplateSelect option'
+        );
+
+      ds.innerHTML=
+        [...list]
+          .map(o=>o.outerHTML)
+          .join('');
+
+      ds.value=
+        p.templateId||
+        state.activeTemplateId||
+        '';
+
+      ds.onchange=
+        ()=>setPatientTemplate(
+          p.id,
+          ds.value
+        );
+    });
+}
+
+const calculatorDefs=[
+
+  {
+    id:'map',
+    cat:'Hemodinamik',
+    name:'MAP',
+    desc:'Mean arterial pressure',
+
+    html:()=>`
+      <div class="calc-grid">
+
+        <div class="field">
+          <label>SBP (mmHg)</label>
+          <input
+            id="cMapSbp"
+            type="number">
+        </div>
+
+        <div class="field">
+          <label>DBP (mmHg)</label>
+          <input
+            id="cMapDbp"
+            type="number">
+        </div>
+
+      </div>
+
+      <div
+        id="cMapResult"
+        class="calc-result">
+        Masukkan SBP dan DBP.
+      </div>
+    `,
+
+    bind:()=>{
+      const run=()=>{
+        const a=num(
+          $('cMapSbp')?.value
+        );
+
+        const b=num(
+          $('cMapDbp')?.value
+        );
+
+        $('cMapResult').textContent=
+          a!=null&&b!=null
+            ?`MAP: ${Math.round((a+2*b)/3)} mmHg`
+            :'Masukkan SBP dan DBP.';
+      };
+
+      [
+        'cMapSbp',
+        'cMapDbp'
+      ].forEach(
+        id=>
+          $(id)?.addEventListener(
+            'input',
+            run
+          )
+      );
+    }
+  },
+
+  {
+    id:'shock',
+    cat:'Hemodinamik',
+    name:'Shock Index',
+    desc:'HR / SBP',
+
+    html:()=>`
+      <div class="calc-grid">
+
+        <div class="field">
+          <label>HR (/min)</label>
+          <input
+            id="cSiHr"
+            type="number">
+        </div>
+
+        <div class="field">
+          <label>SBP (mmHg)</label>
+          <input
+            id="cSiSbp"
+            type="number">
+        </div>
+
+      </div>
+
+      <div
+        id="cSiResult"
+        class="calc-result">
+        Masukkan HR dan SBP.
+      </div>
+    `,
+
+    bind:()=>{
+      const run=()=>{
+        const hr=num(
+          $('cSiHr')?.value
+        );
+
+        const sbp=num(
+          $('cSiSbp')?.value
+        );
+
+        $('cSiResult').textContent=
+          hr!=null&&sbp>0
+            ?`Shock Index: ${Math.round(hr/sbp*100)/100}`
+            :'Masukkan HR dan SBP.';
+      };
+
+      [
+        'cSiHr',
+        'cSiSbp'
+      ].forEach(
+        id=>
+          $(id)?.addEventListener(
+            'input',
+            run
+          )
+      );
+    }
+  },
+
+  {
+    id:'bmi',
+    cat:'Antropometri',
+    name:'BMI',
+    desc:'Berat badan / tinggi badan',
+
+    html:()=>`
+      <div class="calc-grid">
+
+        <div class="field">
+          <label>BB (kg)</label>
+          <input
+            id="cBmiW"
+            type="number"
+            step="0.1">
+        </div>
+
+        <div class="field">
+          <label>TB (cm)</label>
+          <input
+            id="cBmiH"
+            type="number"
+            step="0.1">
+        </div>
+
+      </div>
+
+      <div
+        id="cBmiResult"
+        class="calc-result">
+        Masukkan BB dan TB.
+      </div>
+    `,
+
+    bind:()=>{
+      const run=()=>{
+        const w=num(
+          $('cBmiW')?.value
+        );
+
+        const h=num(
+          $('cBmiH')?.value
+        );
+
+        $('cBmiResult').textContent=
+          w!=null&&h>0
+            ?`BMI: ${(w/((h/100)**2)).toFixed(1)}`
+            :'Masukkan BB dan TB.';
+      };
+
+      [
+        'cBmiW',
+        'cBmiH'
+      ].forEach(
+        id=>
+          $(id)?.addEventListener(
+            'input',
+            run
+          )
+      );
+    }
+  },
+
+  {
+    id:'bsa',
+    cat:'Antropometri',
+    name:'BSA',
+    desc:'Body surface area (Mosteller)',
+
+    html:()=>`
+      <div class="calc-grid">
+
+        <div class="field">
+          <label>BB (kg)</label>
+          <input
+            id="cBsaW"
+            type="number"
+            step="0.1">
+        </div>
+
+        <div class="field">
+          <label>TB (cm)</label>
+          <input
+            id="cBsaH"
+            type="number"
+            step="0.1">
+        </div>
+
+      </div>
+
+      <div
+        id="cBsaResult"
+        class="calc-result">
+        Masukkan BB dan TB.
+      </div>
+    `,
+
+    bind:()=>{
+      const run=()=>{
+        const w=num(
+          $('cBsaW')?.value
+        );
+
+        const h=num(
+          $('cBsaH')?.value
+        );
+
+        $('cBsaResult').textContent=
+          w!=null&&h>0
+            ?`BSA: ${Math.sqrt(w*h/3600).toFixed(2)} m²`
+            :'Masukkan BB dan TB.';
+      };
+
+      [
+        'cBsaW',
+        'cBsaH'
+      ].forEach(
+        id=>
+          $(id)?.addEventListener(
+            'input',
+            run
+          )
+      );
+    }
+  },
+
+  {
+    id:'anion',
+    cat:'Elektrolit',
+    name:'Anion Gap',
+    desc:'Na − (Cl + HCO₃)',
+
+    html:()=>`
+      <div class="calc-grid">
+
+        <div class="field">
+          <label>Na</label>
+          <input
+            id="cAgNa"
+            type="number">
+        </div>
+
+        <div class="field">
+          <label>Cl</label>
+          <input
+            id="cAgCl"
+            type="number">
+        </div>
+
+        <div class="field">
+          <label>HCO₃</label>
+          <input
+            id="cAgHco"
+            type="number">
+        </div>
+
+      </div>
+
+      <div
+        id="cAgResult"
+        class="calc-result">
+        Masukkan Na, Cl, dan HCO₃.
+      </div>
+    `,
+
+    bind:()=>{
+      const run=()=>{
+        const na=num(
+          $('cAgNa')?.value
+        );
+
+        const cl=num(
+          $('cAgCl')?.value
+        );
+
+        const h=num(
+          $('cAgHco')?.value
+        );
+
+        $('cAgResult').textContent=
+          na!=null&&
+          cl!=null&&
+          h!=null
+            ?`Anion Gap: ${na-(cl+h)} mEq/L`
+            :'Masukkan Na, Cl, dan HCO₃.';
+      };
+
+      [
+        'cAgNa',
+        'cAgCl',
+        'cAgHco'
+      ].forEach(
+        id=>
+          $(id)?.addEventListener(
+            'input',
+            run
+          )
+      );
+    }
+  },
+
+  {
+    id:'corrected-na',
+    cat:'Elektrolit',
+    name:'Corrected Sodium',
+    desc:'Koreksi Na terhadap hiperglikemia',
+
+    html:()=>`
+      <div class="calc-grid">
+
+        <div class="field">
+          <label>Na (mEq/L)</label>
+          <input
+            id="cNa"
+            type="number">
+        </div>
+
+        <div class="field">
+          <label>Glukosa (mg/dL)</label>
+          <input
+            id="cGlucose"
+            type="number">
+        </div>
+
+      </div>
+
+      <div
+        id="cNaResult"
+        class="calc-result">
+        Masukkan Na dan glukosa.
+      </div>
+    `,
+
+    bind:()=>{
+      const run=()=>{
+        const na=num(
+          $('cNa')?.value
+        );
+
+        const g=num(
+          $('cGlucose')?.value
+        );
+
+        $('cNaResult').textContent=
+          na!=null&&g!=null
+            ?`Corrected Na: ${(na+0.016*(g-100)).toFixed(1)} mEq/L`
+            :'Masukkan Na dan glukosa.';
+      };
+
+      [
+        'cNa',
+        'cGlucose'
+      ].forEach(
+        id=>
+          $(id)?.addEventListener(
+            'input',
+            run
+          )
+      );
+    }
+  }
+
+];
+
+function renderTools(){
+  const q=
+    clean(
+      $('toolSearch').value
+    ).toLowerCase();
+
+  const rows=
+    calculatorDefs.filter(
+      t=>
+        (
+          t.name+
+          ' '+
+          t.desc+
+          ' '+
+          t.cat
+        )
+        .toLowerCase()
+        .includes(q)
+    );
+
+  $('toolsList').innerHTML=
+    rows
+      .map(
+        t=>`
+          <article
+            class="tool-card calculator-card">
+
+            <div>
+
+              <span class="eyebrow">
+                ${t.cat}
+              </span>
+
+              <h2>
+                ${t.name}
+              </h2>
+
+              <p>
+                ${t.desc}
+              </p>
+
+            </div>
+
+            <div class="calculator-body">
+              ${t.html()}
+            </div>
+
+          </article>
+        `
+      )
+      .join('');
+
+  rows.forEach(
+    t=>t.bind()
+  );
+}
+
+async function ensureDefaultTemplate(){
+  let list=
+    await dbAll('templates');
+
+  if(!list.length){
+
+    await dbPut(
+      'templates',
+      {
+        id:crypto.randomUUID(),
+        name:DEFAULT_TEMPLATE_NAME,
+        body:DEFAULT_TEMPLATE,
+        system:true,
+        updatedAt:now()
+      }
+    );
+
+    list=
+      await dbAll('templates');
+  }
+
+  state.activeTemplateId=
+    list.find(t=>t.system)?.id||
+    list[0]?.id||
+    null;
+}
+
+async function populateTemplateSelects(){
+  const list=
+    await dbAll('templates');
+
+  const opts=
+    list
+      .map(
+        t=>`
+          <option value="${t.id}">
+            ${esc(t.name)}
+            ${t.system?' · bawaan':''}
+          </option>
+        `
+      )
+      .join('');
+
+  const form=
+    $('formTemplateSelect');
+
+  if(form){
+
+    const current=
+      form.value||
+      state.activeTemplateId||
+      list[0]?.id||
+      '';
+
+    form.innerHTML=opts;
+    form.value=current;
+
+    state.activeTemplateId=
+      form.value||
+      state.activeTemplateId;
+  }
+}
+
+async function renderTemplates(){
+  const list=
+    await dbAll('templates');
+
+  $('templateList').innerHTML=
+    list
+      .map(
+        t=>`
+          <div class="template-card">
+
+            <div>
+
+              <strong>
+                ${esc(t.name)}
+              </strong>
+
+              <small>
+                ${
+                  t.system
+                    ?'Template bawaan'
+                    :'Template saya'
+                }
+              </small>
+
+            </div>
+
+            <button
+              class="secondary-btn"
+              data-template-edit="${t.id}">
+              Edit
+            </button>
+
+          </div>
+        `
+      )
+      .join('');
+}
+
+function openTemplateEditor(id=null){
+  state.templateId=id;
+
+  const load=
+    id
+      ?dbGet('templates',id)
+      :Promise.resolve(null);
+
+  load.then(
+    t=>{
+      const x=
+        t||
+        {
+          name:'Template baru',
+          body:DEFAULT_TEMPLATE
+        };
+
+      $('templateName').value=
+        x.name;
+
+      $('templateBody').value=
+        x.body;
+
+      $('templateEditorTitle').textContent=
+        id
+          ?'Edit template'
+          :'Template baru';
+
+      $('templateEditor').hidden=false;
+    }
+  );
+}
+
+const fields=[
+  '[WAKTU]',
+  '[NAMA_DOKTER]',
+  '[UNIT]',
+  '[RS]',
+  '[NAMA_PASIEN]',
+  '[JENIS_KELAMIN]',
+  '[USIA]',
+  '[BB_IF_AVAILABLE]',
+  '[DIAGNOSIS]',
+  '[SUBJECTIVE]',
+  '[GCS_IF_AVAILABLE]',
+  '[VITALS]',
+  '[PHYSICAL_EXAM]',
+  '[ASSESSMENT]',
+  '[PLAN]',
+  '[MAP_IF_AVAILABLE]',
+  '[SHOCK_INDEX_IF_AVAILABLE]'
+];
+
+async function saveTemplate(){
+  const name=
+    clean(
+      $('templateName').value
+    )||
+    'Template tanpa nama';
+
+  const body=
+    $('templateBody').value.trim();
+
+  if(!body){
+    toast(
+      'Isi template belum ada.'
+    );
+    return;
+  }
+
+  const old=
+    state.templateId
+      ?await dbGet(
+        'templates',
+        state.templateId
+      )
+      :null;
+
+  await dbPut(
+    'templates',
+    {
+      id:
+        old?.id||
+        crypto.randomUUID(),
+
+      name,
+      body,
+
+      system:
+        old?.system||
+        false,
+
+      updatedAt:now()
+    }
+  );
+
+  $('templateEditor').hidden=true;
+
+  await renderTemplates();
+  await populateTemplateSelects();
+
+  toast(
+    'Template disimpan'
+  );
+}
+
+async function refreshPatients(){
+  state.patients=
+    await dbAll('patients');
+
+  state.patients.sort(
+    (a,b)=>
+      new Date(
+        b.createdAt||
+        b.updatedAt
+      )-
+      new Date(
+        a.createdAt||
+        a.updatedAt
+      )
+  );
+
+  renderList();
+}
+
+async function saveProfile(){
+  await dbPut(
+    'settings',
+    {
+      key:'profile',
+
+      value:{
+        doctor:clean(
+          $('doctorName').value
+        ),
+
+        hospital:clean(
+          $('hospital').value
+        ),
+
+        unit:clean(
+          $('unit').value
+        )
+      }
+    }
+  );
+
+  updateWorkContext();
+
+  $('settingsModal').hidden=true;
+
+  toast(
+    'Profil kerja disimpan'
+  );
+}
+
+async function updateWorkContext(){
+  const p=await profile();
+
+  const wc=$('workContext');
+
+  if(wc){
+    wc.textContent=
+      p.doctor
+        ?`${p.doctor}${
+          p.unit
+            ?' · '+p.unit
+            :''
+        }`
+        :'Profil kerja belum diatur';
+  }
+
+  const d=$('profileDoctorLabel');
+
+  if(d)
+    d.textContent=
+      p.doctor||
+      'Profil kerja';
+
+  const u=$('profileUnitLabel');
+
+  if(u)
+    u.textContent=
+      p.unit||
+      'Atur profil kerja';
+
+  const b=$('profileBtn');
+
+  if(b)
+    b.title=
+      p.doctor
+        ?'Edit profil kerja'
+        :'Atur profil kerja';
+}
+
+async function openSettings(){
+  const p=await profile();
+
+  $('doctorName').value=
+    p.doctor||'';
+
+  $('hospital').value=
+    p.hospital||'';
+
+  $('unit').value=
+    p.unit||'';
+
+  $('settingsModal').hidden=false;
+}
+
+function exportData(){
+  Promise.all([
+    dbAll('patients'),
+    dbAll('settings'),
+    dbAll('templates')
+  ])
+  .then(
+    ([patients,settings,templates])=>{
+      const blob=
+        new Blob(
+          [
+            JSON.stringify(
+              {
+                version:2,
+                exportedAt:now(),
+                patients,
+                settings,
+                templates
+              },
+              null,
+              2
+            )
+          ],
+          {
+            type:'application/json'
+          }
+        );
+
+      const a=
+        document.createElement('a');
+
+      a.href=
+        URL.createObjectURL(blob);
+
+      a.download=
+        `ruangdokter-backup-${
+          new Date()
+            .toISOString()
+            .slice(0,10)
+        }.json`;
+
+      a.click();
+
+      URL.revokeObjectURL(a.href);
+
+      toast(
+        'Backup dibuat'
+      );
+    }
+  );
+}
+
+async function importData(file){
+  try{
+
+    const d=
+      JSON.parse(
+        await file.text()
+      );
+
+    for(
+      const p of d.patients||[]
+    )
+      await dbPut(
+        'patients',
+        p
+      );
+
+    for(
+      const s of d.settings||[]
+    )
+      await dbPut(
+        'settings',
+        s
+      );
+
+    for(
+      const t of d.templates||[]
+    )
+      await dbPut(
+        'templates',
+        t
+      );
+
+    await refreshPatients();
+    updateWorkContext();
+
+    toast(
+      'Backup dipulihkan'
+    );
+
+  }catch{
+    toast(
+      'File backup tidak valid.'
+    );
+  }
+}
+
+function toast(msg){
+  const t=$('toast');
+
+  if(!t)return;
+
+  t.textContent=msg;
+
+  t.classList.add('show');
+
+  clearTimeout(
+    toast._t
+  );
+
+  toast._t=
+    setTimeout(
+      ()=>t.classList.remove('show'),
+      1800
+    );
+}
+
+function bind(){
+
+  $('newPatientBtn').onclick=
+    openNew;
+
+  $('detailCopyBtn').onclick=
+    ()=>{
+      if(state.detailId)
+        copyPatient(
+          state.detailId
+        );
+    };
+
+  $('backToPatients').onclick=
+    ()=>showView('patients');
+
+  $('backFromDetail').onclick=
+    ()=>showView('patients');
+
+  $('savePatientBtn').onclick=
+    saveForm;
+
+  $('cancelFormBtn').onclick=
+    ()=>showView('patients');
+
+  $('patientForm').addEventListener(
+    'submit',
+    e=>{
+      e.preventDefault();
+      saveForm();
+    }
+  );
+
+  $('oxygen').addEventListener(
+    'change',
+    updateOxygenFlow
+  );
+
+  $('profileBtn').onclick=
+    openSettings;
+
+  $('saveSettingsBtn').onclick=
+    saveProfile;
+
+  $('exportBtn').onclick=
+    exportData;
+
+  $('importBtn').onclick=
+    ()=>$('importInput').click();
+
+  $('importInput').onchange=
+    e=>
+      e.target.files[0]&&
+      importData(
+        e.target.files[0]
+      );
+
+  $('patientSearch').oninput=
+    renderList;
+
+  $('ageYears').oninput=
+    ()=>{
+      updatePediatricFields();
+      updatePreview();
+    };
+
+  document
+    .querySelectorAll(
+      '#patientForm input,'+
+      '#patientForm textarea,'+
+      '#patientForm select'
+    )
+    .forEach(
+      el=>
+        el.addEventListener(
+          'input',
+          updatePreview
+        )
+    );
+
+  document
+    .querySelectorAll('.segment')
+    .forEach(
+      b=>
+        b.onclick=
+          ()=>{
+            state.list=
+              b.dataset.list;
+
+            document
+              .querySelectorAll(
+                '.segment'
+              )
+              .forEach(
+                x=>
+                  x.classList.toggle(
+                    'active',
+                    x===b
+                  )
+              );
+
+            renderList();
+          }
+    );
+
+  document
+    .querySelectorAll('[data-nav]')
+    .forEach(
+      b=>
+        b.onclick=
+          ()=>{
+            const n=
+              b.dataset.nav;
+
+            if(n==='patients'){
+              showView('patients');
+
+            }else if(n==='tools'){
+              renderTools();
+              showView('tools');
+
+            }else if(n==='templates'){
+              renderTemplates();
+              showView('templates');
+
+            }else{
+              toast(
+                'Menu ini masuk tahap berikutnya.'
+              );
+            }
+          }
+    );
+
+  document
+    .querySelectorAll('[data-close]')
+    .forEach(
+      b=>
+        b.onclick=
+          ()=>$(b.dataset.close)
+            .hidden=true
+    );
+
+  document
+    .querySelectorAll(
+      '[data-update-type]'
+    )
+    .forEach(
+      b=>
+        b.onclick=
+          ()=>{
+            state.updateType=
+              b.dataset.updateType;
+
+            renderUpdateFields();
+          }
+    );
+
+  $('saveUpdateBtn').onclick=
+    saveUpdate;
+
+  $('saveConsultBtn').onclick=
+    saveConsult;
+
+  $('addSpecialtyBtn').onclick=
+    addConsult;
+
+  $('copyFormBtn').onclick=
+    ()=>{
+      if(state.editingId)
+        copyPatient(
+          state.editingId
+        );
+      else
+        toast(
+          'Simpan pasien dulu untuk copy dari History.'
+        );
+    };
+
+  $('physicalHelper').onclick=
+    openPhysicalHelper;
+
+  $('physicalSectionTabs').onclick=
+    e=>{
+      const b=
+        e.target.closest(
+          '[data-physical-section]'
+        );
+
+      if(b){
+        physicalSection=
+          b.dataset.physicalSection;
+
+        renderPhysicalOptions();
+      }
+    };
+
+  $('physicalOptions').onclick=
+    e=>{
+      const b=
+        e.target.closest(
+          '[data-finding-index]'
+        );
+
+      if(b){
+        applyPhysicalFinding(
+          b.dataset.findingIndex
+        );
+
+        renderPhysicalOptions();
+        updatePreview();
+      }
+    };
+
+  $('patientList').onclick=
+    e=>{
+      const b=
+        e.target.closest(
+          'button[data-action]'
+        );
+
+      if(b){
+
+        const id=b.dataset.id;
+        const a=b.dataset.action;
+
+        if(a==='copy')
+          copyPatient(id);
+
+        if(a==='consult')
+          openConsult(id);
+
+        if(a==='done')
+          completePatient(id);
+
+        if(a==='edit')
+          openEdit(id);
+
+        return;
+      }
+
+      const card=
+        e.target.closest(
+          '[data-open-patient]'
+        );
+
+      if(card)
+        openDetail(
+          card.dataset.openPatient
+        );
+    };
+
+  $('consultRows').onclick=
+    e=>{
+
+      const rem=
+        e.target.closest(
+          '[data-remove-consult]'
+        );
+
+      if(rem){
+
+        state.consultDraft.splice(
+          Number(
+            rem.dataset.removeConsult
+          ),
+          1
+        );
+
+        renderConsultRows();
+        return;
+      }
+
+      const sp=
+        e.target.closest(
+          '[data-consult-specialty]'
+        );
+
+      if(sp){
+
+        state
+          .consultDraft[
+            Number(sp.dataset.index)
+          ]
+          .specialty=sp.value;
+
+        state
+          .consultDraft[
+            Number(sp.dataset.index)
+          ]
+          .updatedAt=now();
+
+        return;
+      }
+
+      const t=
+        e.target.closest(
+          '[data-consult-field]'
+        );
+
+      if(t){
+
+        const i=
+          Number(t.dataset.index);
+
+        const f=
+          t.dataset.consultField;
+
+        state
+          .consultDraft[i][f]=
+          !state.consultDraft[i][f];
+
+        state
+          .consultDraft[i]
+          .updatedAt=now();
+
+        renderConsultRows();
+      }
+    };
+
+  document
+    .querySelectorAll(
+      '[data-copy-section]'
+    )
+    .forEach(
+      b=>
+        b.onclick=
+          async()=>{
+            const p=
+              readForm(
+                state.editingId
+                  ?state.patients.find(
+                    x=>x.id===
+                      state.editingId
+                  )
+                  :null
+              );
+
+            await copyText(
+              await sectionText(
+                p,
+                b.dataset.copySection
+              ),
+              'Tersalin'
+            );
+          }
+    );
+
+  $('toolSearch').oninput=
+    renderTools;
+
+  $('newTemplateBtn').onclick=
+    ()=>openTemplateEditor();
+
+  $('formTemplateSelect').onchange=
+    ()=>{
+      state.activeTemplateId=
+        $('formTemplateSelect').value;
+
+      updatePreview();
+    };
+
+  $('closeTemplateEditor').onclick=
+    ()=>{
+      $('templateEditor').hidden=true;
+    };
+
+  $('saveTemplateBtn').onclick=
+    saveTemplate;
+
+  $('templateFields').innerHTML=
+    fields
+      .map(
+        f=>`
+          <button
+            type="button"
+            class="chip"
+            data-field="${f}">
+            ${f}
+          </button>
+        `
+      )
+      .join('');
+
+  $('templateFields').onclick=
+    e=>{
+      const b=
+        e.target.closest(
+          '[data-field]'
+        );
+
+      if(!b)return;
+
+      const el=
+        $('templateBody');
+
+      const start=
+        el.selectionStart;
+
+      const end=
+        el.selectionEnd;
+
+      el.value=
+        el.value.slice(0,start)+
+        b.dataset.field+
+        el.value.slice(end);
+
+      el.focus();
+
+      el.selectionStart=
+        el.selectionEnd=
+          start+
+          b.dataset.field.length;
+    };
+
+  $('templateList').onclick=
+    e=>{
+      const b=
+        e.target.closest(
+          '[data-template-edit]'
+        );
+
+      if(b)
+        openTemplateEditor(
+          b.dataset.templateEdit
+        );
+    };
+}
+
+(async function init(){
+
+  bind();
+
+  await ensureDefaultTemplate();
+
+  await populateTemplateSelects();
+
+  await updateWorkContext();
+
+  await refreshPatients();
+
+})();

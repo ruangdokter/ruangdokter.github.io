@@ -3962,6 +3962,44 @@ function bind(){
     };
 }
 
+document.addEventListener('focusin',e=>{
+
+  const el=e.target;
+
+  if(
+    !el.matches(
+      'input, select, textarea'
+    )
+  ){
+    return;
+  }
+
+  setTimeout(()=>{
+
+    const rect=
+      el.getBoundingClientRect();
+
+    const topSpace=90;
+    const bottomSpace=90;
+
+    if(
+      rect.top < topSpace ||
+      rect.bottom >
+        window.innerHeight-bottomSpace
+    ){
+
+      el.scrollIntoView({
+        behavior:'smooth',
+        block:'center',
+        inline:'nearest'
+      });
+
+    }
+
+  },80);
+
+});
+
 (async function init(){
 
   bind();

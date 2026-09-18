@@ -140,3 +140,25 @@ input:focus,select:focus,textarea:focus{border-color:#7ba5f6;box-shadow:0 0 0 3p
   padding:10px 0 20px;
   background:transparent;
 }
+
+.danger-btn{
+  border:1px solid #f0caca;
+  background:#fff;
+  color:#c0392b;
+  border-radius:9px;
+  padding:8px 12px;
+  font:inherit;
+  font-size:12px;
+  font-weight:600;
+  cursor:pointer;
+  transition:.15s ease;
+}
+
+.danger-btn:hover{
+  background:#fff5f5;
+  border-color:#e8aaaa;
+}
+
+.danger-btn:active{
+  transform:translateY(1px);
+}

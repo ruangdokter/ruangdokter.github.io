@@ -615,3 +615,74 @@ input:focus,select:focus,textarea:focus{border-color:#7ba5f6;box-shadow:0 0 0 3p
   }
 
 }
+
+/* =========================================================
+   RUANGDOKTER — DESKTOP APP LAYOUT
+   ========================================================= */
+
+@media (min-width: 801px) {
+
+  /* Header full width */
+  .app-shell {
+    display: grid;
+    grid-template-columns: 210px minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+    min-height: 100vh;
+  }
+
+  .topbar {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  /* Sidebar */
+  .bottom-nav {
+    grid-column: 1;
+    grid-row: 2;
+
+    position: sticky;
+    top: 20px;
+
+    width: 210px;
+    height: calc(100vh - 40px);
+
+    box-sizing: border-box;
+    align-self: start;
+
+    margin: 20px 0 20px 18px;
+  }
+
+  /* Main content */
+  .app-shell > main {
+    grid-column: 2;
+    grid-row: 2;
+
+    min-width: 0;
+
+    padding: 20px 28px 40px 24px;
+  }
+
+  /* Form/list content */
+  #formView,
+  #patientsView,
+  #detailView,
+  #toolsView,
+  #templatesView {
+    width: 100%;
+    max-width: 960px;
+    margin: 0;
+  }
+
+}
+
+@media (max-width: 800px) {
+
+  .app-shell {
+    display: block;
+  }
+
+  .app-shell > main {
+    padding-bottom: 80px;
+  }
+
+}

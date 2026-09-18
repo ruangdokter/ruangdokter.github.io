@@ -61,6 +61,19 @@ function openDB(){
   });
 }
 
+async function dbDelete(store,key){
+  const db=await openDB();
+
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(store,'readwrite');
+
+    tx.objectStore(store).delete(key);
+
+    tx.oncomplete=()=>resolve();
+    tx.onerror=()=>reject(tx.error);
+  });
+}
+
 async function dbPut(store,value){
   const db=await openDB();
   return new Promise((res,rej)=>{
@@ -1389,6 +1402,13 @@ function renderList(){
                     data-id="${p.id}">
                     Selesai
                   </button>
+
+                  <button
+                    class="danger-btn"
+                    data-action="delete"
+                    data-id="${p.id}">
+                    Hapus
+                  </button>
                 `
             }
 
@@ -2190,6 +2210,40 @@ async function completePatient(id){
 
   toast(
     'Pasien masuk Arsip'
+  );
+}
+
+async function deletePatient(id){
+
+  const p=
+    state.patients.find(
+      x=>x.id===id
+    );
+
+  if(!p) return;
+
+  const confirmed=
+    confirm(
+      `Hapus pasien "${p.patient.name}"?\n\n`+
+      `Data pasien, konsultasi, dan timeline akan dihapus permanen dari perangkat ini.`
+    );
+
+  if(!confirmed) return;
+
+  await dbDelete(
+    'patients',
+    id
+  );
+
+  await refreshPatients();
+
+  if(state.detailId===id){
+    state.detailId=null;
+    showView('patients');
+  }
+
+  toast(
+    'Pasien dihapus'
   );
 }
 
@@ -3553,9 +3607,6 @@ function bind(){
   $('backFromDetail').onclick=
     ()=>showView('patients');
 
-  $('savePatientBtn').onclick=
-    saveForm;
-
   $('cancelFormBtn').onclick=
     ()=>showView('patients');
 
@@ -3761,16 +3812,19 @@ function bind(){
 
         if(a==='copy')
           copyPatient(id);
-
+        
         if(a==='consult')
           openConsult(id);
-
+        
         if(a==='done')
           completePatient(id);
-
+        
         if(a==='edit')
           openEdit(id);
-
+        
+        if(a==='delete')
+          deletePatient(id);
+        
         return;
       }
 

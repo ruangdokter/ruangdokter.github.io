@@ -1087,3 +1087,291 @@
   }
 
 }
+
+/* =========================================================
+   PATIENT LIST — HORIZONTAL WORKSPACE
+   ========================================================= */
+
+@media (min-width: 760px) {
+
+  #patientsView .patient-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  #patientsView .patient-card {
+    display: grid;
+
+    grid-template-columns:
+      190px
+      minmax(180px, 1.2fr)
+      minmax(220px, 1.5fr)
+      130px
+      auto;
+
+    grid-template-areas:
+      "identity diagnosis consult time actions";
+
+    align-items: center;
+    gap: 18px;
+
+    width: 100%;
+    min-height: 100px;
+
+    padding: 15px 18px;
+
+    background: #fff;
+    border: 1px solid var(--rd-line);
+    border-radius: 14px;
+
+    box-shadow:
+      0 2px 9px rgba(25,45,80,.035);
+  }
+
+  /* Identitas */
+  #patientsView .patient-card-top {
+    grid-area: identity;
+    min-width: 0;
+  }
+
+  #patientsView .patient-name {
+    font-size: 16px;
+    font-weight: 800;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  #patientsView .patient-meta {
+    font-size: 11px;
+    margin-top: 4px;
+    white-space: nowrap;
+  }
+
+  #patientsView .patient-status {
+    display: inline-flex;
+    margin-top: 7px;
+    font-size: 10px;
+  }
+
+  /* Diagnosis */
+  #patientsView .patient-diagnosis {
+    grid-area: diagnosis;
+
+    min-width: 0;
+
+    margin: 0;
+    padding-left: 16px;
+
+    border-left: 1px solid var(--rd-line);
+
+    font-size: 12px;
+    line-height: 1.45;
+
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* Konsultasi */
+  #patientsView .patient-consult {
+    grid-area: consult;
+
+    min-width: 0;
+
+    margin: 0;
+    padding-left: 16px;
+
+    border-left: 1px solid var(--rd-line);
+  }
+
+  #patientsView .consult-label {
+    margin-bottom: 6px;
+
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .08em;
+    color: #8a94a6;
+  }
+
+  #patientsView .consult-status-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+
+    max-height: 42px;
+    overflow: hidden;
+  }
+
+  #patientsView .consult-status {
+    padding: 4px 7px;
+
+    border-radius: 7px;
+
+    background: #f4f6f9;
+
+    font-size: 10px;
+  }
+
+  /* Waktu */
+  #patientsView .patient-card-bottom {
+    grid-area: time;
+
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+
+    min-width: 0;
+
+    margin: 0;
+    padding-left: 16px;
+
+    border-left: 1px solid var(--rd-line);
+  }
+
+  #patientsView .patient-time {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+
+    font-size: 10px;
+    line-height: 1.3;
+  }
+
+  #patientsView .patient-time span {
+    font-size: 8px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+
+    color: #a0a8b5;
+  }
+
+  /* Actions */
+  #patientsView .patient-card-actions {
+    grid-area: actions;
+
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+
+    gap: 5px;
+
+    min-width: 245px;
+
+    margin: 0;
+    padding: 0;
+
+    border: 0;
+  }
+
+  #patientsView .patient-card-actions button {
+    min-height: 32px;
+
+    padding: 6px 9px;
+
+    border-radius: 8px;
+
+    font-size: 10px;
+    white-space: nowrap;
+  }
+
+  #patientsView .patient-card-actions .danger-btn {
+    color: var(--danger);
+    background: #fff;
+    border-color: #f0c8c4;
+  }
+
+  #patientsView .patient-card-actions .danger-btn:hover {
+    background: #fff5f4;
+  }
+
+}
+
+
+/* =========================================================
+   TABLET
+   ========================================================= */
+
+@media (min-width: 760px) and (max-width: 1150px) {
+
+  #patientsView .patient-card {
+    grid-template-columns:
+      170px
+      minmax(150px, 1fr)
+      minmax(170px, 1fr)
+      auto;
+
+    grid-template-areas:
+      "identity diagnosis consult actions"
+      "identity time consult actions";
+  }
+
+  #patientsView .patient-card-actions {
+    min-width: 190px;
+  }
+
+  #patientsView .patient-card-bottom {
+    flex-direction: row;
+    gap: 12px;
+
+    padding-left: 0;
+    border-left: 0;
+  }
+
+}
+
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media (max-width: 759px) {
+
+  #patientsView .patient-card {
+    display: block;
+
+    background: #fff;
+    border: 1px solid var(--rd-line);
+    border-radius: 14px;
+
+    padding: 14px;
+  }
+
+  #patientsView .patient-diagnosis {
+    margin-top: 10px;
+  }
+
+  #patientsView .patient-consult {
+    margin-top: 10px;
+  }
+
+  #patientsView .patient-card-bottom {
+    display: flex;
+    justify-content: space-between;
+
+    margin-top: 10px;
+    padding-top: 9px;
+
+    border-top: 1px solid var(--rd-line);
+  }
+
+  #patientsView .patient-card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+
+    margin-top: 10px;
+  }
+
+  #patientsView .patient-card-actions button {
+    flex: 1 1 calc(50% - 6px);
+
+    min-height: 34px;
+    font-size: 11px;
+  }
+
+}

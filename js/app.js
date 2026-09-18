@@ -1317,68 +1317,134 @@ function renderList(){
         <article
           class="patient-card"
           data-open-patient="${p.id}">
-
-          <div class="patient-main">
-
-            <div>
-
+      
+          <div class="patient-card-top">
+      
+            <div class="patient-identity">
+      
               <div class="patient-name">
                 ${esc(p.patient.name)}
               </div>
-
+      
               <div class="patient-meta">
                 ${esc(ageText(p))}
                 ${
                   p.patient.gender
-                    ?' • '+esc(p.patient.gender)
+                    ?` · ${esc(p.patient.gender)}`
                     :''
                 }
-
                 ${
-                  p.patient.group==='pediatric'&&
+                  p.patient.group==='pediatric' &&
                   p.patient.weight!=null
-                    ?' • BB '+
-                      esc(p.patient.weight)+
-                      ' kg'
+                    ?` · BB ${esc(p.patient.weight)} kg`
                     :''
                 }
               </div>
-
-              <div class="diagnosis">
-                ${
-                  esc(
-                    p.diagnosis.join(' • ')||
-                    'Belum ada diagnosis'
-                  )
-                }
-              </div>
-
+      
             </div>
-
-            <span
-              class="status-badge ${done?'done':''}">
-              ${done?'Selesai':'Belum selesai'}
+      
+            <span class="patient-status">
+              ${p.status==='completed'
+                ?'Selesai'
+                :'Aktif'}
             </span>
-
+      
           </div>
-
-          <div class="consult-line">
-            Konsul:
-            <strong>
-              ${esc(consultSummary(p))}
-            </strong>
-          </div>
-
-          <div class="patient-actions">
-
+      
+          <div class="patient-diagnosis">
             ${
-              done
+              p.diagnosis.length
+                ?esc(p.diagnosis.join(' • '))
+                :'<span class="muted">Belum ada diagnosis</span>'
+            }
+          </div>
+      
+          <div class="patient-consult">
+      
+            <div class="consult-label">
+              KONSULTASI
+            </div>
+      
+            <div class="consult-status-list">
+      
+              ${
+                p.consultations?.length
+                  ?p.consultations
+                    .map(c=>`
+                      <span
+                        class="consult-status ${
+                          c.contacted
+                            ?'is-contacted'
+                            :'is-pending'
+                        }">
+      
+                        <span class="consult-icon">
+                          ${
+                            c.contacted
+                              ?'✓'
+                              :'•'
+                          }
+                        </span>
+      
+                        ${esc(
+                          specialtyLabel(
+                            c.specialty
+                          )
+                        )}
+      
+                        ${
+                          c.adviceReceived
+                            ?'<span class="advice-mark">· advice ✓</span>'
+                            :''
+                        }
+      
+                      </span>
+                    `)
+                    .join('')
+                  :`
+                    <span class="consult-empty">
+                      Belum ada konsultasi
+                    </span>
+                  `
+              }
+      
+            </div>
+      
+          </div>
+      
+          <div class="patient-card-bottom">
+      
+            <div class="patient-time">
+              <span>Input</span>
+              ${formatDate(
+                p.createdAt||p.updatedAt
+              )}
+            </div>
+      
+            <div class="patient-time update-time">
+              <span>Update</span>
+              ${relativeTime(p.updatedAt)}
+            </div>
+      
+          </div>
+      
+          <div class="patient-card-actions">
+      
+            ${
+              p.status==='completed'
                 ?`
                   <button
                     class="secondary-btn"
                     data-action="edit"
                     data-id="${p.id}">
                     Buka
+                  </button>
+      
+                  <button
+                    class="secondary-btn"
+                    data-action="copy"
+                    data-id="${p.id}">
+                    Copy Konsul
                   </button>
                 `
                 :`
@@ -1388,55 +1454,32 @@ function renderList(){
                     data-id="${p.id}">
                     Copy Konsul
                   </button>
-
+      
                   <button
                     class="secondary-btn"
                     data-action="consult"
                     data-id="${p.id}">
-                    ＋ Konsul
+                    + Konsul
                   </button>
-
+      
                   <button
                     class="primary-btn"
                     data-action="done"
                     data-id="${p.id}">
                     Selesai
                   </button>
-
-                  <button
-                    class="danger-btn"
-                    data-action="delete"
-                    data-id="${p.id}">
-                    Hapus
-                  </button>
                 `
             }
-
-            ${
-              done
-                ?`
-                  <button
-                    class="secondary-btn"
-                    data-action="copy"
-                    data-id="${p.id}">
-                    Copy Konsul
-                  </button>
-                `
-                :''
-            }
-
+      
+            <button
+              class="danger-btn"
+              data-action="delete"
+              data-id="${p.id}">
+              Hapus
+            </button>
+      
           </div>
-
-          <div class="time-row">
-            <span>
-              Input: ${formatDate(created)}
-            </span>
-
-            <span>
-              Update: ${relativeTime(p.updatedAt)}
-            </span>
-          </div>
-
+      
         </article>
       `;
     })

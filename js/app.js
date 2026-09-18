@@ -276,16 +276,17 @@ async function renderTemplate(body,p){
 
   r(
     '[DIAGNOSIS]',
-    p.diagnosis.length
-      ?p.diagnosis.join('\n')
-      :clean(p.assessment)
+    p.diagnosis.join('\n')
   );
 
   r('[SUBJECTIVE]',p.subjective);
   r('[GCS_IF_AVAILABLE]',gcsText(p));
   r('[VITALS]',vitalsText(p));
   r('[PHYSICAL_EXAM]',physicalText(p));
-  r('[ASSESSMENT]',p.assessment);
+  r(
+    '[ASSESSMENT]',
+    p.diagnosis.join('\n')
+  );
   r('[PLAN]',p.plan);
 
   r(
@@ -332,7 +333,9 @@ function sectionText(p,s){
     return clean(p.subjective||'');
 
   if(s==='a')
-    return clean(p.assessment||'');
+    return clean(
+      p.diagnosis.join('\n')
+    );
 
   if(s==='p')
     return clean(p.plan||'');
@@ -481,9 +484,6 @@ function readForm(existing){
     }
   };
 
-  p.assessment=
-    clean($('assessment').value);
-
   p.plan=
     clean($('plan').value);
 
@@ -553,9 +553,6 @@ function fillForm(p){
   $('abdomenExam').value=o.abdomen||'';
   $('extremityExam').value=o.extremities||'';
   $('otherExam').value=o.other||'';
-
-  $('assessment').value=
-    p.assessment;
 
   $('plan').value=
     p.plan;
@@ -1936,18 +1933,12 @@ function renderUpdateFields(){
   }
 
   const map={
-    assessment:[
-      'Assessment baru',
-      'assessment',
-      'Isi assessment terbaru...'
-    ],
-
     plan:[
       'Terapi / Plan baru',
       'plan',
       'Isi terapi atau rencana terbaru...'
     ],
-
+  
     lab:[
       'Hasil lab / penunjang',
       'lab',
@@ -1968,11 +1959,9 @@ function renderUpdateFields(){
   ]=map[state.updateType];
 
   const current=
-    state.updateType==='assessment'
-      ?p.assessment
-      :state.updateType==='plan'
-        ?p.plan
-        :'';
+    state.updateType==='plan'
+      ?p.plan
+      :'';
 
   $('updateFields').innerHTML=`
     <div class="field">
@@ -2086,25 +2075,6 @@ async function saveUpdate(){
         'Tidak ada perubahan data TTV.';
 
   }else if(
-    state.updateType==='assessment'
-  ){
-
-    const value=
-      clean(
-        $('updateText').value
-      );
-
-    if(!value){
-      toast(
-        'Assessment belum diisi.'
-      );
-      return;
-    }
-
-    p.assessment=value;
-    summary=value;
-
-  }else if(
     state.updateType==='plan'
   ){
 
@@ -2160,7 +2130,6 @@ async function saveUpdate(){
 
   const labels={
     vitals:'TTV diperbarui',
-    assessment:'Assessment diperbarui',
     plan:'Terapi / plan diperbarui',
     lab:'Lab / penunjang diperbarui',
     note:'Catatan ditambahkan'
@@ -2507,7 +2476,7 @@ function renderDetail(p){
             physicalText(p),
             '',
             'A:',
-            p.assessment,
+            p.diagnosis.join('\n'),
             '',
             'P:',
             p.plan
@@ -3285,7 +3254,6 @@ const fields=[
   '[GCS_IF_AVAILABLE]',
   '[VITALS]',
   '[PHYSICAL_EXAM]',
-  '[ASSESSMENT]',
   '[PLAN]',
   '[MAP_IF_AVAILABLE]',
   '[SHOCK_INDEX_IF_AVAILABLE]'

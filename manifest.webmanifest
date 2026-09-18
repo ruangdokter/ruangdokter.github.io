@@ -1,0 +1,9 @@
+{
+  "name": "RuangDokter",
+  "short_name": "RuangDokter",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#f6f8fb",
+  "theme_color": "#2563eb",
+  "description": "Clinical workspace offline-first untuk dokter jaga."
+}

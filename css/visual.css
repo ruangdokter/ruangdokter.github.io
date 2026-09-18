@@ -402,158 +402,91 @@ input:focus,select:focus,textarea:focus{border-color:#7ba5f6;box-shadow:0 0 0 3p
 }
 
 /* =========================================================
-   RUANGDOKTER — FORM DENSITY V3
-   Compact without changing the main layout
+   RUANGDOKTER — CONSULTATION FORM NORMAL LAYOUT
    ========================================================= */
 
-.form-section{
-  padding:15px 16px;
-  margin-bottom:9px;
-  border-radius:14px;
+#formView {
+  width: 100%;
+  max-width: 980px;
+  margin: 0 auto;
 }
 
-.form-section .section-heading{
-  padding:8px 10px;
-  margin-bottom:10px;
-  border-radius:9px;
+#formView .page-head {
+  margin-bottom: 18px;
 }
 
-.form-section .section-heading h2{
-  font-size:13px;
+/* Card */
+#formView .form-section,
+#formView .output-section {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 12px;
 }
 
-/* labels */
-.form-section label{
-  margin-bottom:4px;
-  font-size:10px;
+/* Section header */
+#formView .section-heading {
+  margin-bottom: 14px;
 }
 
-/* inputs */
-.form-section input,
-.form-section select{
-  min-height:36px;
-  padding:7px 10px;
-  font-size:12px;
+/* Input spacing */
+#formView .field {
+  margin-bottom: 10px;
 }
 
-.form-section textarea{
-  min-height:68px;
-  padding:9px 10px;
-  font-size:12px;
+/* Comfortable inputs */
+#formView input,
+#formView select {
+  min-height: 40px;
 }
 
-/* field spacing */
-.form-section .field{
-  margin-bottom:7px;
+#formView textarea {
+  min-height: 82px;
 }
 
-/* grids */
-.form-section .two-col,
-.form-section .three-col,
-.form-section .physical-grid{
-  gap:8px;
-}
-
-/* GCS */
-.form-section .gcs-grid{
-  gap:7px;
-}
-
-.form-section .gcs-grid input{
-  min-height:34px;
-}
-
-/* small section labels such as TTV / pemeriksaan fisik */
-.form-section .subheading{
-  margin-top:11px;
-  margin-bottom:6px;
-  font-size:9px;
-}
-
-/* pediatric row */
-.form-section .pediatric-fields{
-  margin-top:7px;
-  padding-top:7px;
-}
-
-/* Physical examination */
-.form-section .physical-grid input,
-.form-section .physical-grid textarea{
-  min-height:36px;
+/* Keep Objective readable */
+#formView .gcs-grid,
+#formView .physical-grid {
+  gap: 10px;
 }
 
 /* Preview */
-.output-section{
-  padding:14px 16px;
-  margin-bottom:9px;
-  border-radius:14px;
-}
-
-.output-section .section-heading{
-  padding:0;
-  margin-bottom:8px;
-}
-
-.output-box{
-  min-height:150px;
-  max-height:360px;
-  padding:10px;
-  font-size:10px;
-  line-height:1.5;
+#formView .output-box {
+  min-height: 180px;
+  max-height: 360px;
 }
 
 /* Copy buttons */
-.copy-grid{
-  gap:6px;
-  margin-top:8px;
+#formView .copy-grid {
+  gap: 8px;
 }
 
-.copy-grid button{
-  min-height:32px;
-  padding:6px 8px;
-  font-size:10px;
+/* Save */
+#formView .form-save-bar {
+  position: relative !important;
+  bottom: auto !important;
+  margin-top: 4px;
+  padding: 4px 0 24px;
 }
 
-/* Save area */
-.form-save-bar{
-  position:relative !important;
-  bottom:auto !important;
-  padding:5px 0 20px;
+/* Tablet */
+@media (max-width: 1100px) {
+  #formView {
+    max-width: 900px;
+  }
 }
 
-/* =========================================================
-   OBJECTIVE — make it denser
-   ========================================================= */
-
-.form-section .vitals-grid{
-  gap:8px;
-}
-
-.form-section .vitals-grid input,
-.form-section .vitals-grid select{
-  min-height:36px;
-}
-
-/* =========================================================
-   MOBILE
-   ========================================================= */
-
-@media(max-width:700px){
-
-  .form-section{
-    padding:13px;
+/* Mobile */
+@media (max-width: 700px) {
+  #formView {
+    max-width: none;
   }
 
-  .form-section .physical-grid{
-    grid-template-columns:1fr;
+  #formView .form-section,
+  #formView .output-section {
+    border-radius: 12px;
   }
 
-  .form-section .two-col{
-    grid-template-columns:1fr;
+  #formView textarea {
+    min-height: 76px;
   }
-
-  .output-section{
-    padding:13px;
-  }
-
 }

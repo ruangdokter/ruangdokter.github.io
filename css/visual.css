@@ -2081,20 +2081,15 @@
 }
 
 /* =========================================================
-   RUANGDOKTER — CLINICAL TOOLS
+   RUANGDOKTER — CLINICAL TOOLS / REFINED
    ========================================================= */
 
 #toolsView{
-  max-width:860px;
+  max-width:920px;
 }
 
-
-/* ---------------------------------------------------------
-   HEADER
-   --------------------------------------------------------- */
-
 #toolsView .page-head{
-  margin-bottom:14px;
+  margin-bottom:12px;
 }
 
 #toolsView .page-head h1{
@@ -2107,16 +2102,12 @@
 }
 
 
-/* ---------------------------------------------------------
-   SEARCH
-   --------------------------------------------------------- */
+/* SEARCH */
 
 #toolsView > .search-box{
   width:100%;
-  min-height:42px;
-
-  margin-bottom:14px;
-
+  min-height:40px;
+  margin-bottom:16px;
   border-radius:10px;
 }
 
@@ -2125,58 +2116,61 @@
 }
 
 
-/* ---------------------------------------------------------
-   TOOL LIST
-   --------------------------------------------------------- */
+/* LIST */
 
 #toolsView .tools-list{
   display:flex;
   flex-direction:column;
-  gap:9px;
+  gap:8px;
 }
 
 
-/* ---------------------------------------------------------
+/* =========================================================
    TOOL CARD
-   --------------------------------------------------------- */
+   ========================================================= */
 
 #toolsView .calculator-card{
+  display:grid;
+  grid-template-columns:185px minmax(0,1fr);
+
+  column-gap:24px;
+  align-items:center;
+
   width:100%;
+  min-height:0;
+
   box-sizing:border-box;
 
-  padding:14px 15px;
+  padding:13px 16px;
 
   background:#fff;
 
   border:1px solid var(--rd-line);
-  border-radius:12px;
+  border-radius:11px;
 
   box-shadow:
-    0 2px 8px rgba(25,45,80,.03);
+    0 1px 5px rgba(25,45,80,.025);
 }
 
 
-/* ---------------------------------------------------------
-   TOOL HEADER
-   --------------------------------------------------------- */
+/* TOOL INFO */
 
 #toolsView .calculator-card > div:first-child{
   min-width:0;
 }
 
 #toolsView .calculator-card .eyebrow{
-  display:inline-flex;
-  align-items:center;
+  display:block;
 
   margin:0 0 3px;
 
   font-size:8px;
-  line-height:1;
+  line-height:1.1;
 
   font-weight:800;
   letter-spacing:.08em;
 
-  color:#718096;
+  color:#7b8798;
 }
 
 #toolsView .calculator-card h2{
@@ -2185,31 +2179,32 @@
   font-size:14px;
   line-height:1.2;
 
+  font-weight:800;
+
   color:var(--rd-text);
 }
 
 #toolsView .calculator-card > div:first-child p{
   margin:3px 0 0;
 
-  font-size:10px;
+  font-size:9px;
   line-height:1.3;
 
   color:var(--rd-muted);
 }
 
 
-/* ---------------------------------------------------------
-   CALCULATOR BODY
-   --------------------------------------------------------- */
+/* =========================================================
+   CALCULATOR AREA
+   ========================================================= */
 
 #toolsView .calculator-body{
-  margin-top:11px;
+  min-width:0;
+  margin:0;
 }
 
 
-/* ---------------------------------------------------------
-   INPUT GRID
-   --------------------------------------------------------- */
+/* INPUTS */
 
 #toolsView .calc-grid{
   display:grid;
@@ -2217,7 +2212,7 @@
   grid-template-columns:
     repeat(2,minmax(0,1fr));
 
-  gap:9px;
+  gap:8px;
 
   margin:0;
 }
@@ -2231,24 +2226,24 @@
 
   margin:0 0 4px;
 
-  font-size:9px;
+  font-size:8px;
   line-height:1.2;
 
   font-weight:700;
 
-  color:#667085;
+  color:#687386;
 }
 
 #toolsView .calc-grid input{
   width:100%;
+  height:34px;
+
   box-sizing:border-box;
 
-  min-height:38px;
+  padding:6px 9px;
 
-  padding:7px 10px;
-
-  border:1px solid #dfe5ed;
-  border-radius:8px;
+  border:1px solid #dfe4eb;
+  border-radius:7px;
 
   background:#fff;
 
@@ -2262,65 +2257,47 @@
 #toolsView .calc-grid input:focus{
   outline:none;
 
-  border-color:#7aa5ff;
+  border-color:#8bb0f5;
 
   box-shadow:
-    0 0 0 3px #dbe8ff;
+    0 0 0 2px #e8f0ff;
 }
 
 
-/* ---------------------------------------------------------
-   THREE INPUTS
-   --------------------------------------------------------- */
-
-#toolsView .calc-grid .field:nth-child(3){
-  grid-column:auto;
-}
-
-
-/* ---------------------------------------------------------
+/* =========================================================
    RESULT
-   --------------------------------------------------------- */
+   ========================================================= */
 
 #toolsView .calc-result{
-  min-height:35px;
-  box-sizing:border-box;
-
   display:flex;
   align-items:center;
 
-  margin-top:8px;
-  padding:8px 10px;
+  min-height:28px;
 
-  border:1px solid #e4e9f0;
-  border-radius:8px;
+  box-sizing:border-box;
 
-  background:#f7f9fc;
+  margin-top:6px;
+  padding:6px 9px;
 
-  color:#536174;
+  border:1px solid #e7ebf1;
+  border-radius:7px;
 
-  font-size:10px;
+  background:#f8f9fb;
+
+  font-size:9px;
   line-height:1.3;
 
-  font-weight:600;
-}
-
-#toolsView .calc-result:not(:empty){
-  color:#344054;
+  color:#596579;
 }
 
 
-/* ---------------------------------------------------------
-   ANION GAP / 3 INPUTS
-   --------------------------------------------------------- */
+/* =========================================================
+   3 INPUT TOOLS
+   ========================================================= */
 
-@media (min-width:760px){
-
-  #toolsView .calculator-card:has(#cAgNa) .calc-grid{
-    grid-template-columns:
-      repeat(3,minmax(0,1fr));
-  }
-
+#toolsView .calculator-card:has(#cAgNa) .calc-grid{
+  grid-template-columns:
+    repeat(3,minmax(0,1fr));
 }
 
 
@@ -2328,57 +2305,55 @@
    MOBILE
    ========================================================= */
 
-@media (max-width:759px){
+@media(max-width:759px){
 
   #toolsView{
-    padding-top:18px;
-  }
-
-  #toolsView .page-head{
-    margin-bottom:11px;
-  }
-
-  #toolsView .page-head h1{
-    font-size:23px;
-  }
-
-  #toolsView > .search-box{
-    margin-bottom:11px;
-  }
-
-  #toolsView .tools-list{
-    gap:8px;
+    max-width:none;
   }
 
   #toolsView .calculator-card{
+    display:block;
+
     padding:13px;
-
-    border-radius:11px;
   }
 
-  #toolsView .calculator-card h2{
-    font-size:14px;
-  }
-
-  #toolsView .calculator-body{
-    margin-top:10px;
+  #toolsView .calculator-card > div:first-child{
+    margin-bottom:10px;
   }
 
   #toolsView .calc-grid{
-    grid-template-columns:1fr;
+    grid-template-columns:
+      repeat(2,minmax(0,1fr));
+
     gap:7px;
   }
 
+  #toolsView .calculator-card:has(#cAgNa) .calc-grid{
+    grid-template-columns:
+      repeat(3,minmax(0,1fr));
+  }
+
   #toolsView .calc-grid input{
-    min-height:40px;
-    font-size:12px;
+    height:38px;
   }
 
   #toolsView .calc-result{
-    margin-top:8px;
-    min-height:37px;
+    min-height:32px;
+  }
 
-    font-size:10px;
+}
+
+
+/* SMALL MOBILE */
+
+@media(max-width:420px){
+
+  #toolsView .calculator-card:has(#cAgNa) .calc-grid{
+    grid-template-columns:1fr 1fr 1fr;
+  }
+
+  #toolsView .calculator-card{
+    padding:12px;
   }
 
 }

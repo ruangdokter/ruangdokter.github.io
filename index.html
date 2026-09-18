@@ -59,32 +59,87 @@
         <form id="patientForm" novalidate>
           <input id="patientId" type="hidden">
           <section class="form-section">
-            <div class="section-heading"><h2>Identitas</h2></div>
-            <div class="field">
-              <label for="patientName">Nama pasien <span>*</span></label>
-              <input id="patientName" required autocomplete="off">
+            <div class="section-heading">
+              <h2>Identitas</h2>
             </div>
-            <div class="two-col">
+          
+            <div class="identity-grid">
+          
               <div class="field">
-                <label for="gender">Jenis kelamin <span>*</span></label>
+                <label for="patientName">
+                  Nama pasien <span>*</span>
+                </label>
+                <input
+                  id="patientName"
+                  required
+                  autocomplete="off"
+                  placeholder="Nama lengkap">
+              </div>
+          
+              <div class="field">
+                <label for="gender">
+                  Jenis kelamin <span>*</span>
+                </label>
+          
                 <select id="gender" required>
                   <option value="">Pilih</option>
                   <option value="L">Laki-laki</option>
                   <option value="P">Perempuan</option>
                 </select>
               </div>
+          
               <div class="field">
-                <label for="ageYears">Usia (tahun) <span>*</span></label>
-                <input id="ageYears" type="number" min="0" max="120" inputmode="numeric" required>
+                <label for="ageYears">
+                  Usia (tahun) <span>*</span>
+                </label>
+          
+                <input
+                  id="ageYears"
+                  type="number"
+                  min="0"
+                  max="120"
+                  inputmode="numeric"
+                  required
+                  placeholder="Usia">
               </div>
+          
             </div>
-
+          
             <div id="pediatricFields" class="pediatric-fields" hidden>
-              <div class="callout">Mode pediatrik aktif — usia lebih dari tahun dapat dirinci bila diperlukan.</div>
+              <div class="callout">
+                Mode pediatrik aktif — usia dapat dirinci bila diperlukan.
+              </div>
+          
               <div class="three-col">
-                <div class="field"><label for="ageMonths">Bulan</label><input id="ageMonths" type="number" min="0" max="11" inputmode="numeric"></div>
-                <div class="field"><label for="ageDays">Hari</label><input id="ageDays" type="number" min="0" max="30" inputmode="numeric"></div>
-                <div class="field"><label for="weight">BB (kg)</label><input id="weight" type="number" min="0" step="0.1" inputmode="decimal"></div>
+                <div class="field">
+                  <label for="ageMonths">Bulan</label>
+                  <input
+                    id="ageMonths"
+                    type="number"
+                    min="0"
+                    max="11"
+                    inputmode="numeric">
+                </div>
+          
+                <div class="field">
+                  <label for="ageDays">Hari</label>
+                  <input
+                    id="ageDays"
+                    type="number"
+                    min="0"
+                    max="30"
+                    inputmode="numeric">
+                </div>
+          
+                <div class="field">
+                  <label for="weight">BB (kg)</label>
+                  <input
+                    id="weight"
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    inputmode="decimal">
+                </div>
               </div>
             </div>
           </section>

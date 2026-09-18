@@ -1201,9 +1201,19 @@
     flex-wrap: wrap;
     gap: 5px;
 
-    max-height: 42px;
-    overflow: hidden;
+    max-height: none;
+    overflow: visible;
   }
+
+   #patientsView .patient-consult {
+     min-width: 0;
+     align-self: center;
+   }
+   
+   #patientsView .consult-status {
+     max-width: 100%;
+     white-space: nowrap;
+   }
 
   #patientsView .consult-status {
     padding: 4px 7px;

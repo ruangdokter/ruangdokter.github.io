@@ -991,3 +991,99 @@
     margin-right: auto;
   }
 }
+
+/* =========================================================
+   RUANGDOKTER — PATIENT LIST
+   ========================================================= */
+
+@media (min-width: 760px) {
+
+  /* Patient page can use more horizontal space */
+  #patientsView {
+    max-width: 980px;
+  }
+
+  /* One patient = one full-width work card */
+  #patientsView .patient-list {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  #patientsView .patient-card {
+    width: 100%;
+    padding: 16px 18px;
+  }
+
+  /* Patient information */
+  #patientsView .patient-main {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 20px;
+  }
+
+  #patientsView .patient-name {
+    font-size: 16px;
+  }
+
+  #patientsView .patient-meta {
+    font-size: 12px;
+  }
+
+  #patientsView .diagnosis {
+    font-size: 13px;
+    margin-top: 7px;
+  }
+
+  #patientsView .consult-line {
+    margin-top: 9px;
+  }
+
+  /* Actions sit on one clean row */
+  #patientsView .patient-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 6px;
+    margin-top: 12px;
+  }
+
+  #patientsView .patient-actions button {
+    min-height: 34px;
+    padding: 7px 11px;
+    font-size: 11px;
+  }
+
+  #patientsView .updated {
+    margin-top: 9px;
+  }
+
+}
+
+@media (min-width: 760px) {
+
+  #patientsView .page-head {
+    margin-bottom: 16px;
+  }
+
+  #patientsView .page-head h1 {
+    font-size: 28px;
+  }
+
+  #patientsView .search-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  #patientsView .search-box {
+    min-width: 0;
+  }
+
+  #patientsView .segmented {
+    flex-shrink: 0;
+  }
+
+}

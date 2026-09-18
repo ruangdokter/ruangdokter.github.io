@@ -1104,17 +1104,17 @@
     display: grid;
 
     grid-template-columns:
-      190px
-      minmax(180px, 1.2fr)
-      minmax(220px, 1.5fr)
-      130px
-      auto;
+     145px
+     minmax(120px, 1fr)
+     minmax(150px, 1.2fr)
+     100px
+     minmax(145px, auto);
 
     grid-template-areas:
       "identity diagnosis consult time actions";
 
     align-items: center;
-    gap: 18px;
+    gap: 12px;
 
     width: 100%;
     min-height: 100px;
@@ -1260,7 +1260,7 @@
 
     gap: 5px;
 
-    min-width: 245px;
+    min-width: 145px;
 
     margin: 0;
     padding: 0;
@@ -1311,7 +1311,7 @@
   }
 
   #patientsView .patient-card-actions {
-    min-width: 190px;
+    min-width: 145px;
   }
 
   #patientsView .patient-card-bottom {

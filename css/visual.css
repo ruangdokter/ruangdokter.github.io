@@ -52,7 +52,30 @@
     top:0;
   }
 
-
+   /* =========================================================
+      TOPBAR BRAND
+      ========================================================= */
+   
+   @media (min-width:760px){
+   
+     .topbar{
+       display:flex;
+       align-items:center;
+       justify-content:space-between;
+       overflow:hidden;
+     }
+   
+     .topbar img{
+       width:auto;
+       max-width:150px;
+       max-height:42px;
+       height:auto;
+       object-fit:contain;
+       display:block;
+     }
+   
+   }
+   
   /* Sidebar */
   .bottom-nav{
     grid-column:1;

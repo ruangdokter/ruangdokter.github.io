@@ -2079,3 +2079,189 @@
   }
 
 }
+
+/* =========================================================
+   RUANGDOKTER — CALCULATOR WORKSPACE
+   ========================================================= */
+
+#toolsView .tools-search{
+  margin-bottom:14px;
+}
+
+#toolsView .search-box{
+  border-radius:10px;
+}
+
+
+/* -----------------------------------------
+   TOOL CARD
+   ----------------------------------------- */
+
+#toolsView .tool-card{
+  margin-bottom:9px;
+
+  padding:14px;
+
+  background:#fff;
+  border:1px solid var(--rd-line);
+  border-radius:12px;
+
+  box-shadow:0 2px 8px rgba(25,45,80,.03);
+}
+
+#toolsView .tool-card:last-child{
+  margin-bottom:0;
+}
+
+
+/* -----------------------------------------
+   TOOL HEADER
+   ----------------------------------------- */
+
+#toolsView .tool-card .eyebrow{
+  margin-bottom:3px;
+
+  font-size:8px;
+  font-weight:800;
+  letter-spacing:.08em;
+}
+
+#toolsView .tool-card h2{
+  margin:0;
+
+  font-size:14px;
+  line-height:1.2;
+}
+
+#toolsView .tool-card p{
+  margin:3px 0 0;
+
+  font-size:10px;
+  line-height:1.35;
+
+  color:var(--rd-muted);
+}
+
+
+/* -----------------------------------------
+   INPUT AREA
+   ----------------------------------------- */
+
+#toolsView .tool-card .tool-inputs{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+
+  gap:9px;
+
+  margin-top:11px;
+}
+
+#toolsView .tool-card .field{
+  min-width:0;
+}
+
+#toolsView .tool-card label{
+  display:block;
+
+  margin-bottom:4px;
+
+  font-size:9px;
+  font-weight:700;
+
+  color:#667085;
+}
+
+#toolsView .tool-card input,
+#toolsView .tool-card select{
+  width:100%;
+  min-height:38px;
+
+  padding:7px 10px;
+
+  border:1px solid #dfe5ed;
+  border-radius:8px;
+
+  background:#fff;
+
+  font-size:11px;
+}
+
+#toolsView .tool-card input:focus,
+#toolsView .tool-card select:focus{
+  border-color:#7aa5ff;
+
+  box-shadow:0 0 0 3px #dbe8ff;
+
+  outline:none;
+}
+
+
+/* -----------------------------------------
+   RESULT
+   ----------------------------------------- */
+
+#toolsView .tool-card .tool-result{
+  min-height:34px;
+
+  display:flex;
+  align-items:center;
+
+  margin-top:9px;
+  padding:8px 10px;
+
+  border:1px solid #e5eaf1;
+  border-radius:8px;
+
+  background:#f7f9fc;
+
+  font-size:10px;
+  line-height:1.35;
+}
+
+#toolsView .tool-card .tool-result strong{
+  font-size:12px;
+}
+
+
+/* -----------------------------------------
+   TOOL DESCRIPTION
+   ----------------------------------------- */
+
+#toolsView .tool-card .tool-help{
+  margin-top:8px;
+
+  font-size:9px;
+  line-height:1.4;
+
+  color:#8a94a6;
+}
+
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media(max-width:759px){
+
+  #toolsView .tool-card{
+    padding:13px;
+
+    border-radius:11px;
+  }
+
+  #toolsView .tool-card .tool-inputs{
+    grid-template-columns:1fr;
+
+    gap:7px;
+
+    margin-top:10px;
+  }
+
+  #toolsView .tool-card input,
+  #toolsView .tool-card select{
+    min-height:40px;
+
+    font-size:12px;
+  }
+
+}

@@ -1744,17 +1744,17 @@
   }
 
   .topbar .brand-logo,
-  .topbar img{
-    display:block;
-
-    width:118px !important;
-    height:auto !important;
-
-    max-width:118px !important;
-    max-height:32px !important;
-
-    object-fit:contain;
-  }
+   .topbar img{
+     display:block;
+   
+     width:118px !important;
+     height:39px !important;
+   
+     max-width:118px !important;
+     max-height:39px !important;
+   
+     object-fit:contain;
+   }
 
   .profile-button{
     flex:0 0 auto;
@@ -2520,4 +2520,12 @@
     color:var(--rd-blue);
   }
 
+}
+
+/* =========================================================
+   CLS — RESERVE PATIENT LIST SPACE
+   ========================================================= */
+
+#patientsView .patient-list{
+  min-height:120px;
 }
